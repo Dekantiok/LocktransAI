@@ -17,3 +17,6 @@ staticfiles/
 .idea/
 # Local working documents
 design.md
+
+# Local working documents
+locktrans_*.md
