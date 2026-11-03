@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}Join Escrow | LockTrans{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-10 col-lg-6">
+        <div class="card-custom">
+            <div class="card-body p-4 p-md-5">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <svg class="tc-icon text-accent" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" style="font-size:1.5rem" viewBox="0 0 16 16"><path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1 1 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4 4 0 0 1-.128-1.287z"/>
+  <path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 1 0-4.243-4.243z"/></svg>
+                    <span class="mono-text text-accent small fw-bold">JOIN</span>
+                </div>
+                <h2 class="fw-bold mb-2" style="letter-spacing:-0.02em;">Join Existing Escrow</h2>
+                <p class="text-muted-custom small mb-4">Enter the escrow code and the email linked to this transaction.</p>
+                <div class="divider"></div>
+
+                {% if error_message %}
+                <div class="alert alert-danger border-0 py-2 small"><svg class="tc-icon me-1" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+  <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/></svg>{{ error_message }}</div>
+                {% endif %}
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="code" class="form-label">Escrow Code</label>
+                        <input type="text" name="code" id="code" class="form-control mono-text" placeholder="e.g., LKTRaB3xK" autocapitalize="characters" spellcheck="false" autocomplete="off" required autofocus value="{{ initial_code|default:'' }}">
+                        <small class="text-muted-custom d-block mt-1">Found in your invite email or notification from the creator.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Your Email Address</label>
+                        <input type="email" name="email" id="email" class="form-control" placeholder="your@email.com" autocapitalize="none" spellcheck="false" autocomplete="email" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary-custom btn-lg w-100 mt-3">
+                        <svg class="tc-icon me-2" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8m15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0M4.5 7.5a.5.5 0 0 0 0 1h5.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708l-3-3a.5.5 0 1 0-.708.708L10.293 7.5z"/></svg>Verify & Continue
+                    </button>
+                </form>
+
+                <div class="text-center mt-4">
+                    <a href="{% url 'home' %}" class="text-muted-custom small text-decoration-none"><svg class="tc-icon me-1" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8"/></svg>Back to Home</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

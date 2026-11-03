@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+{% block title %}Create Escrow | LockTrans{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-10 col-lg-7">
+        <div class="card-custom">
+            <div class="card-body p-4 p-md-5">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <svg class="tc-icon text-accent" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" style="font-size:1.5rem" viewBox="0 0 16 16"><path d="M8 6.5a.5.5 0 0 1 .5.5v1.5H10a.5.5 0 0 1 0 1H8.5V11a.5.5 0 0 1-1 0V9.5H6a.5.5 0 0 1 0-1h1.5V7a.5.5 0 0 1 .5-.5"/>
+  <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z"/></svg>
+                    <span class="mono-text text-accent small fw-bold">STEP 01</span>
+                </div>
+                <h2 class="fw-bold mb-2" style="letter-spacing:-0.02em;">Initialize Escrow Contract</h2>
+                <p class="text-muted-custom small mb-4">Fill in the transaction details. An OTP will be sent to your email to verify.</p>
+                <div class="divider"></div>
+                <form method="post">
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger border-0 small mb-3">
+                            {% for error in form.non_field_errors %}<div><svg class="tc-icon me-1" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+  <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/></svg>{{ error }}</div>{% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <!-- Section 1: Overview -->
+                    <div class="mb-3">
+                        <label for="{{ form.title.id_for_label }}" class="form-label">{{ form.title.label }}</label>
+                        {{ form.title }}
+                        {% if form.title.help_text %}<small class="text-muted-custom d-block mt-1">{{ form.title.help_text }}</small>{% endif %}
+                        {% for error in form.title.errors %}<div class="text-danger small mt-1"><svg class="tc-icon me-1" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+  <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/></svg>{{ error }}</div>{% endfor %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.description.id_for_label }}" class="form-label">{{ form.description.label }}</label>
+                        {{ form.description }}
+                        {% if form.description.help_text %}<small class="text-muted-custom d-block mt-1">{{ form.description.help_text }}</small>{% endif %}
+                        {% for error in form.description.errors %}<div class="text-danger small mt-1"><svg class="tc-icon me-1" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+  <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/></svg>{{ error }}</div>{% endfor %}
+                    </div>
+
+                    <!-- Section 2: Financial Terms -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-sm-6">
+                            <label for="{{ form.amount.id_for_label }}" class="form-label">Escrow Amount (₦)</label>
+                            {{ form.amount }}
+                            {% if form.amount.help_text %}<small class="text-muted-custom d-block mt-1">{{ form.amount.help_text }}</small>{% endif %}
+                            {% for error in form.amount.errors %}<div class="text-danger small mt-1"><svg class="tc-icon me-1" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+  <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/></svg>{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-12 col-sm-6">
+                            <label for="{{ form.inspection_days.id_for_label }}" class="form-label">Inspection Window (Days)</label>
+                            {{ form.inspection_days }}
+                            {% if form.inspection_days.help_text %}<small class="text-muted-custom d-block mt-1">{{ form.inspection_days.help_text }}</small>{% endif %}
+                            {% for error in form.inspection_days.errors %}<div class="text-danger small mt-1"><svg class="tc-icon me-1" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+  <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/></svg>{{ error }}</div>{% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.fee_payer.id_for_label }}" class="form-label">Who Pays Service Fee?</label>
+                        {{ form.fee_payer }}
+                        {% if form.fee_payer.help_text %}<small class="text-muted-custom d-block mt-1">{{ form.fee_payer.help_text }}</small>{% endif %}
+                        {% for error in form.fee_payer.errors %}<div class="text-danger small mt-1"><svg class="tc-icon me-1" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+  <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/></svg>{{ error }}</div>{% endfor %}
+                    </div>
+
+                    <!-- Live Fee Estimation Box -->
+                    <div class="p-3 mb-3 rounded-3" style="background:var(--color-bg); border:1px solid var(--color-border);" id="fee-preview-box">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="mono-text small text-accent fw-bold"><svg class="tc-icon me-1" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M12 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"/>
+  <path d="M4 2.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5zm0 4a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm3-6a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm3-6a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5z"/></svg>ESCROW ESTIMATE</span>
+                            <button type="button" class="btn btn-link text-decoration-none text-muted-custom p-0 small" data-bs-toggle="collapse" data-bs-target="#feeTiersCollapse" aria-expanded="false" aria-controls="feeTiersCollapse">
+                                Schedule <svg class="tc-icon ms-1" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708"/></svg>
+                            </button>
+                        </div>
+                        <div class="row g-2 small">
+                            <div class="col-6">
+                                <span class="text-muted-custom">Service Fee:</span>
+                                <div class="mono-text fw-semibold text-navy" id="est-fee">₦1,500.00</div>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted-custom">Buyer Pays:</span>
+                                <div class="mono-text fw-semibold text-accent" id="est-buyer-total">-</div>
+                            </div>
+                            <div class="col-12 border-top pt-2 mt-2" style="border-color:var(--color-border) !important;">
+                                <div class="d-flex justify-content-between">
+                                    <span class="text-muted-custom">Seller Receives:</span>
+                                    <span class="mono-text fw-semibold text-navy" id="est-seller-net">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="collapse mt-3 pt-2 border-top" style="border-color:var(--color-border) !important;" id="feeTiersCollapse">
+                            <div class="small text-muted-custom mb-2">Standard flat fee tiers:</div>
+                            <div class="fee-tier small"><span class="text-muted-custom">Up to ₦50,000</span><span class="mono-text text-navy">₦1,500</span></div>
+                            <div class="fee-tier small"><span class="text-muted-custom">₦50,001 – ₦100,000</span><span class="mono-text text-navy">₦2,000</span></div>
+                            <div class="fee-tier small"><span class="text-muted-custom">₦100,001 – ₦500,000</span><span class="mono-text text-navy">₦2,500</span></div>
+                            <div class="fee-tier small"><span class="text-muted-custom">₦500,001 – ₦1,000,000</span><span class="mono-text text-navy">₦5,000</span></div>
+                            <div class="fee-tier small"><span class="text-muted-custom">Above ₦1,000,000</span><span class="mono-text text-navy">₦10,000</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Section 3: Parties -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-sm-6">
+                            <label for="{{ form.creator_role.id_for_label }}" class="form-label">Your Role</label>
+                            {{ form.creator_role }}
+                            {% if form.creator_role.help_text %}<small class="text-muted-custom d-block mt-1">{{ form.creator_role.help_text }}</small>{% endif %}
+                            {% for error in form.creator_role.errors %}<div class="text-danger small mt-1"><svg class="tc-icon me-1" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+  <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/></svg>{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-12 col-sm-6">
+                            <label for="{{ form.creator_email.id_for_label }}" class="form-label">Your Email</label>
+                            {{ form.creator_email }}
+                            {% if form.creator_email.help_text %}<small class="text-muted-custom d-block mt-1">{{ form.creator_email.help_text }}</small>{% endif %}
+                            {% for error in form.creator_email.errors %}<div class="text-danger small mt-1"><svg class="tc-icon me-1" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+  <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/></svg>{{ error }}</div>{% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.counterparty_email.id_for_label }}" class="form-label">Counterparty Email</label>
+                        {{ form.counterparty_email }}
+                        <small class="text-muted-custom d-block mt-1">They will receive an invitation link to review and join this escrow.</small>
+                        {% for error in form.counterparty_email.errors %}<div class="text-danger small mt-1"><svg class="tc-icon me-1" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+  <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/></svg>{{ error }}</div>{% endfor %}
+                    </div>
+
+                    <button type="submit" class="btn btn-primary-custom btn-lg w-100 mt-4">
+                        <svg class="tc-icon me-2" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8m15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0M4.5 7.5a.5.5 0 0 0 0 1h5.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708l-3-3a.5.5 0 1 0-.708.708L10.293 7.5z"/></svg>Generate Contract & Send OTP
+                    </button>
+                </form>
+
+                <div class="text-center mt-4">
+                    <a href="{% url 'home' %}" class="text-muted-custom small text-decoration-none"><svg class="tc-icon me-1" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8"/></svg>Back to Home</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        var amountInput = document.getElementById('{{ form.amount.id_for_label }}');
+        var payerSelect = document.getElementById('{{ form.fee_payer.id_for_label }}');
+        var feeEl = document.getElementById('est-fee');
+        var buyerEl = document.getElementById('est-buyer-total');
+        var sellerEl = document.getElementById('est-seller-net');
+
+        function formatNaira(num) {
+            return '₦' + Number(num).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function calculateFee(val) {
+            if (val <= 50000) return 1500;
+            if (val <= 100000) return 2000;
+            if (val <= 500000) return 2500;
+            if (val <= 1000000) return 5000;
+            return 10000;
+        }
+
+        function updateEstimate() {
+            var val = parseFloat(amountInput ? amountInput.value : 0);
+            if (isNaN(val) || val < 100) {
+                if (feeEl) feeEl.textContent = '₦1,500.00';
+                if (buyerEl) buyerEl.textContent = '-';
+                if (sellerEl) sellerEl.textContent = '-';
+                return;
+            }
+            var fee = calculateFee(val);
+            var payer = payerSelect ? payerSelect.value : 'buyer';
+            var buyerTotal = payer === 'buyer' ? (val + fee) : val;
+            var sellerNet = payer === 'seller' ? Math.max(0, val - fee) : val;
+
+            if (feeEl) feeEl.textContent = formatNaira(fee);
+            if (buyerEl) buyerEl.textContent = formatNaira(buyerTotal);
+            if (sellerEl) sellerEl.textContent = formatNaira(sellerNet);
+        }
+
+        if (amountInput) amountInput.addEventListener('input', updateEstimate);
+        if (payerSelect) payerSelect.addEventListener('change', updateEstimate);
+        updateEstimate();
+    })();
+</script>
+{% endblock %}

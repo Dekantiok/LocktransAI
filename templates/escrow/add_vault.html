@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}Add Payout Email | LockTrans{% endblock %}
+{% block body_class %}form-dark{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-10 col-lg-7">
+        <div class="card-custom">
+            <div class="card-body p-4 p-md-5">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="mono-text text-accent small fw-bold">SETTLEMENT VAULT</span>
+                </div>
+                <h3 class="fw-bold mb-2" style="letter-spacing:-0.02em;">Add Payout Details</h3>
+                <p class="text-muted-custom small mb-2">Escrow: <span class="mono-text">{{ contract.code }}</span></p>
+                <p class="text-muted-custom small mb-4">Enter the PayPal email where you want to receive this escrow payout. Payouts are sent via PayPal Payouts in {{ contract.currency }}. Only the seller can see this afterwards.</p>
+                <div class="divider"></div>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="{{ form.paypal_email.id_for_label }}" class="form-label">{{ form.paypal_email.label }}</label>
+                        {{ form.paypal_email }}
+                        {% for error in form.paypal_email.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                    </div>
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger border-0 py-2 small mb-3">{{ form.non_field_errors }}</div>
+                    {% endif %}
+                    <button type="submit" class="btn btn-primary-custom btn-lg w-100 mt-3">Save PayPal Email</button>
+                </form>
+                <div class="text-center mt-4">
+                    <a href="{% url 'contract_detail' contract.code %}" class="text-muted-custom small text-decoration-none">Back to Escrow</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

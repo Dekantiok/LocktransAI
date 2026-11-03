@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Demo Checkout | LockTrans{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+        <div class="card-custom">
+            <div class="card-body p-4 p-md-5">
+                <span class="eyebrow">Demo checkout</span>
+                <h2 class="fw-bold mb-2" style="letter-spacing:-0.02em;">Simulated payment</h2>
+                <p class="text-muted-custom small mb-4">No real money moves in demo mode. Confirming runs the same backend funding check a verified payment webhook would.</p>
+                <div class="detail-list mb-4">
+                    <div class="detail-row"><span class="detail-key">Escrow</span><span class="detail-val mono-text">{{ contract.code }}</span></div>
+                    <div class="detail-row"><span class="detail-key">Item</span><span class="detail-val">{{ contract.title }}</span></div>
+                    <div class="detail-row"><span class="detail-key">You pay</span><span class="detail-val">{{ contract.total_charge }} {{ contract.currency }}</span></div>
+                    <div class="detail-row"><span class="detail-key">Status</span><span class="detail-val">{{ contract.status }}</span></div>
+                </div>
+                {% if confirmed or contract.status != 'awaiting_funding' %}
+                    {% if contract.status == 'awaiting_funding' %}
+                    <div class="alert alert-warning border-0 small">This escrow is not ready to fund yet.</div>
+                    {% else %}
+                    <div class="alert alert-success border-0 small">Payment confirmed (simulated). The seller has been notified to ship. Head back to chat and continue the deal.</div>
+                    {% endif %}
+                {% else %}
+                <form method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary-custom btn-lg w-100">Confirm simulated payment</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

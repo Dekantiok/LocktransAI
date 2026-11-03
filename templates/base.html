@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}LockTrans{% endblock %}</title>
+    <meta name="description" content="Accountless escrow for social commerce. Hold funds until goods are received and approved.">
+    <meta name="theme-color" content="#0284C7">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><polygon points=%2250,5 90,25 90,75 50,95 10,75 10,25%22 fill=%22%230284C7%22/><text y=%2265%22 x=%2250%22 text-anchor=%22middle%22 font-size=%2255%22 font-family=%22sans-serif%22 font-weight=%22900%22 fill=%22%23ffffff%22>T</text></svg>">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" crossorigin="anonymous"></script>
+    <script src="{% static 'js/voice.js' %}"></script>
+    <style>
+        :root {
+            --color-primary: #0284C7;
+            --color-primary-hover: #0369A1;
+            --color-primary-soft: #E0F2FE;
+            --color-black: #1C1B18;
+            --color-white: #FFFFFF;
+            --color-surface-2: #F5F4F1;
+            --color-bg: #FAFAF8;
+            --color-border: #E8E6E1;
+            --color-border-strong: #D6D3CC;
+            --color-muted: #57534E;
+            --color-faint: #8A857D;
+            --color-success: #15803D;
+            --color-success-soft: #E8F5EC;
+            --color-warning: #B45309;
+            --color-warning-soft: #FDF3E3;
+            --color-danger: #B91C1C;
+            --color-danger-soft: #FDECEC;
+            --color-info: #1D4ED8;
+            --color-info-soft: #E9F0FD;
+            --color-glow: rgba(2, 132, 199, 0.14);
+            --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 999px;
+            --shadow-card: 0 1px 2px rgba(16,16,16,.05);
+            --shadow-md: 0 2px 8px rgba(16,16,16,.07), 0 1px 2px rgba(16,16,16,.04);
+            --shadow-btn: 0 1px 2px rgba(2,132,199,.25);
+        }
+        * { -webkit-font-smoothing: antialiased; }
+        body { background-color: var(--color-bg); font-family: 'Inter', -apple-system, sans-serif; color: var(--color-black); line-height: 1.6; }
+
+        /* Sticky footer: short pages still pin the footer to the viewport bottom. */
+        body { min-height: 100vh; display: flex; flex-direction: column; }
+        main.container { flex: 1 0 auto; width: 100%; max-width: 1160px; }
+        footer { flex-shrink: 0; }
+
+        /* Light blurred header (Locktrans site-header). */
+        .navbar-custom { background: rgba(250,250,248,.88); backdrop-filter: blur(12px); border-bottom: 1px solid var(--color-border); }
+        .navbar-custom .navbar-brand,
+        .navbar-custom .navbar-brand:hover,
+        .navbar-custom .navbar-brand:focus,
+        .navbar-custom .navbar-brand:visited { color: var(--color-black) !important; letter-spacing: -0.02em; }
+        .navbar-custom .nav-link-custom { font-weight: 500; font-size: 0.95rem; color: var(--color-muted); padding: 9px 14px; border-radius: var(--radius-md); text-decoration: none; }
+        .navbar-custom .nav-link-custom:hover { color: var(--color-black); background: var(--color-surface-2); }
+        .navbar-custom .btn-outline-light { border: 1px solid var(--color-border-strong); color: var(--color-black); font-weight: 600; background: transparent; }
+        .navbar-custom .btn-outline-light:hover { border-color: var(--color-faint); background: var(--color-surface-2); color: var(--color-black); }
+
+        .btn-primary-custom { background-color: var(--color-primary); border-color: var(--color-primary); color: var(--color-white); font-weight: 600; border-radius: var(--radius-md); box-shadow: var(--shadow-btn); transition: all 0.15s ease; }
+        .btn-primary-custom:hover { background-color: var(--color-primary-hover); border-color: var(--color-primary-hover); color: var(--color-white); }
+        .btn-outline-dark-custom { border: 1px solid var(--color-border-strong); color: var(--color-black); background: var(--color-white); font-weight: 600; border-radius: var(--radius-md); transition: all 0.15s ease; }
+        .btn-outline-dark-custom:hover { border-color: var(--color-faint); background: var(--color-surface-2); color: var(--color-black); }
+        .btn-primary-custom:active, .btn-outline-dark-custom:active, .btn-outline-light:active { transform: translateY(1px); }
+        .btn-success, .btn-danger, .btn-warning { font-weight: 600; border-radius: var(--radius-md); transition: all 0.15s ease; }
+        .btn-success:active, .btn-danger:active, .btn-warning:active { transform: translateY(1px); }
+        /* Visible keyboard focus for all actions. */
+        .btn-primary-custom:focus-visible, .btn-outline-dark-custom:focus-visible,
+        .btn-outline-light:focus-visible, .copy-btn:focus-visible,
+        .btn-danger:focus-visible, a:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; border-radius: 4px; }
+        .btn-success:focus-visible { outline: 3px solid #16a34a; outline-offset: 2px; }
+        .btn-warning:focus-visible { outline: 3px solid #eab308; outline-offset: 2px; }
+        .navbar-custom a:focus-visible { outline-color: var(--color-primary); }
+        /* Primary actions meet the minimum touch target on mobile. */
+        .btn-lg { min-height: 48px; }
+
+        .mono-text { font-family: 'DM Mono', monospace; }
+        .text-navy { color: var(--color-black); }
+        .text-accent { color: var(--color-primary); }
+        .text-muted-custom { color: var(--color-muted) !important; }
+
+        .card-custom { border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-white); box-shadow: var(--shadow-card); transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+        .card-custom:hover { border-color: var(--color-border-strong); }
+        .card-interactive { transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
+        @media (prefers-reduced-motion: no-preference) {
+            .card-interactive:hover { transform: translateY(-2px); border-color: var(--color-primary); box-shadow: var(--shadow-md); }
+        }
+        /* Sky-capped feature card used on the landing page. */
+        .card-accent { border-top: 4px solid var(--color-primary); }
+        /* Eyebrow label above section titles. */
+        .eyebrow { display: inline-flex; align-items: center; font-weight: 600; font-size: 0.82rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-primary-hover); background: var(--color-primary-soft); padding: 6px 14px; border-radius: var(--radius-full); margin-bottom: 16px; }
+
+        .form-control, .form-select { border: 1px solid var(--color-border-strong); border-radius: var(--radius-md); background: var(--color-white); padding: 12px 14px; font-size: 0.95rem; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+        .form-control:focus, .form-select:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-soft); }
+        .form-label { font-weight: 600; font-size: 0.9rem; color: var(--color-black); margin-bottom: 0.5rem; }
+        .form-select { appearance: none; -webkit-appearance: none; padding-right: 42px; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2357534E' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 14px center; }
+        .form-dark select option, select option { background-color: var(--color-white); color: var(--color-black); }
+        /* Prevent iOS auto-zoom on focus: inputs stay at least 16px on mobile. */
+        .form-control, .form-select, input, select, textarea { font-size: max(1rem, 0.95rem); }
+        /* OTP code entry: fits 6 digits plus wide tracking on a 320px screen. */
+        .otp-input { max-width: 100%; letter-spacing: 0.35em; text-indent: 0.35em; }
+        @media (min-width: 576px) {
+            .otp-input { letter-spacing: 0.5em; text-indent: 0.5em; }
+        }
+
+        /* Light landing: warm canvas, sky accents, blueprint calm. */
+        .landing-body { background-color: var(--color-bg); color: var(--color-black); }
+        .landing-body main.container { display: flex; flex-direction: column; justify-content: center; }
+        .landing-wrap { position: relative; text-align: center; padding: 4rem 0; overflow: hidden; }
+        .landing-wrap::before { content: ""; position: absolute; top: -30%; left: 50%; transform: translateX(-50%); width: 90%; height: 120%; background: radial-gradient(closest-side, var(--color-glow), transparent); pointer-events: none; z-index: 0; }
+        .landing-wrap > * { position: relative; z-index: 1; }
+        .landing-wrap .hero-title { letter-spacing: -0.03em; line-height: 1.05; }
+        .landing-wrap .hero-underline { color: var(--color-primary); }
+        .landing-body .card-custom { color: var(--color-black); }
+
+        /* Form pages: light cards on the warm canvas (form-dark kept as a
+           class name so existing templates keep working, now light). */
+        .form-dark { background-color: var(--color-bg); color: var(--color-black); }
+        .form-dark .card-custom { background-color: var(--color-white); border-color: var(--color-border); box-shadow: var(--shadow-card); }
+        .form-dark .card-custom:hover { border-color: var(--color-border-strong); }
+        .form-dark .text-navy { color: var(--color-black) !important; }
+        .form-dark .text-muted, .form-dark .text-muted-custom { color: var(--color-muted) !important; }
+        .form-dark .form-label { color: var(--color-black); }
+        .form-dark .form-control, .form-dark .form-select { background-color: var(--color-white); border-color: var(--color-border-strong); color: var(--color-black); }
+        .form-dark .form-control::placeholder { color: var(--color-faint); }
+        .form-dark .form-control:focus, .form-dark .form-select:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-soft); }
+        .form-dark .divider { background: var(--color-border); }
+        .form-dark .text-danger { color: var(--color-danger) !important; }
+        .form-dark .alert-danger { background-color: var(--color-danger-soft); color: var(--color-danger); }
+        .form-dark .alert-info { background-color: var(--color-info-soft); color: var(--color-info); border: 0; }
+        .form-dark .input-group-text { background-color: var(--color-surface-2); border-color: var(--color-border-strong); color: var(--color-muted); }
+        .form-dark a:not(.btn) { color: var(--color-primary-hover); }
+        /* Numbered step + fee tier rows. */
+        .step-number { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: var(--radius-full); background: var(--color-primary-soft); color: var(--color-primary-hover); font-weight: 700; line-height: 1; }
+        .fee-tier { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: 0.65rem 0; border-bottom: 1px dashed var(--color-border); }
+        .fee-tier:last-child { border-bottom: 0; }
+        .form-dark .fee-tier { border-bottom-color: var(--color-border); }
+        /* Fee summary card (Locktrans fee-summary). */
+        .fee-summary { background: var(--color-primary-soft); border: 1px solid #BAE0F7; border-radius: var(--radius-md); padding: 18px 20px; }
+
+        /* Locktrans-style footer: dark grid, muted links, blue note. */
+        .footer-custom { background: #131311; border-top: none; }
+        .footer-custom .text-muted-custom { color: #8A857D !important; }
+
+        .badge { font-weight: 600; letter-spacing: 0.01em; border-radius: var(--radius-full); }
+        .bg-primary-custom { background-color: var(--color-primary-soft) !important; color: var(--color-primary-hover); }
+        .border-primary-custom { border-color: var(--color-primary) !important; }
+
+        .divider { height: 1px; background: var(--color-border); margin: 1.5rem 0; }
+        .icon-badge { width: 56px; height: 56px; border-radius: var(--radius-lg); background: var(--color-primary-soft); color: var(--color-primary-hover); }
+
+        /* Lifecycle progress */
+        .progress { background-color: var(--color-border); border-radius: 999px; }
+        .progress-bar { background-color: var(--color-primary); }
+        .step-labels { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--color-muted); margin-top: 0.375rem; }
+
+        /* Copy-to-clipboard */
+        .copyable { display: inline-flex; align-items: center; gap: 0.5rem; min-width: 0; }
+        .copy-btn { border: 1px solid var(--color-border); background: var(--color-white); color: var(--color-muted); border-radius: var(--radius-sm); padding: 0.125rem 0.375rem; font-size: 0.75rem; line-height: 1.4; transition: all 0.15s ease; }
+        .copy-btn:hover { border-color: var(--color-faint); color: var(--color-black); }
+        .copy-btn.copied { border-color: var(--color-primary); color: var(--color-primary-hover); }
+        /* Coarse pointers (touch) get a larger copy hit-area. */
+        @media (pointer: coarse) {
+            .copy-btn { padding: 0.5rem 0.625rem; }
+        }
+
+        /* Poll indicator */
+        .live-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; display: inline-block; }
+        @media (prefers-reduced-motion: no-preference) {
+            .live-dot { animation: pulse 2s ease-in-out infinite; }
+            .btn-primary-custom:hover { transform: translateY(-1px); box-shadow: 0 6px 18px -6px rgba(2, 132, 199, 0.5); }
+            @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .btn-primary-custom:hover { transform: none; }
+        }
+
+        /* Long codes, emails and amounts wrap instead of overflowing. */
+        .mono-text { overflow-wrap: anywhere; }
+
+        /* Chat bubbles (Locktrans message-bubble). */
+        .bubble-mine { background: var(--color-primary-soft); border: 1px solid #BAE0F7; border-bottom-right-radius: 4px; max-width: 85%; }
+        .bubble-theirs { background: var(--color-white); border: 1px solid var(--color-border); border-bottom-left-radius: 4px; max-width: 85%; }
+
+        /* Share-code card, escrow list rows, timeline, detail rows. */
+        .share-card { display: flex; flex-direction: column; gap: 6px; background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%); border-radius: var(--radius-lg); padding: 26px; color: #fff; position: relative; overflow: hidden; }
+        .escrow-item { display: block; background: var(--color-white); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 20px 24px; margin-bottom: 12px; box-shadow: var(--shadow-card); color: var(--color-black); transition: all 0.25s ease; }
+        .escrow-item:hover { border-color: var(--color-primary); box-shadow: var(--shadow-md); transform: translateY(-2px); color: var(--color-black); }
+        .timeline { display: flex; flex-direction: column; }
+        .tl-item { display: flex; gap: 16px; padding-bottom: 26px; position: relative; }
+        .tl-item:last-child { padding-bottom: 0; }
+        .tl-dot { flex: none; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--color-border-strong); background: var(--color-white); margin-top: 3px; position: relative; }
+        .tl-item:not(:last-child) .tl-dot::after { content: ""; position: absolute; left: 50%; top: 16px; bottom: -28px; width: 2px; background: var(--color-border); transform: translateX(-50%); }
+        .tl-dot.done { background: var(--color-success); border-color: var(--color-success); }
+        .tl-dot.now { background: var(--color-primary); border-color: var(--color-primary); box-shadow: 0 0 0 4px var(--color-primary-soft); }
+        .detail-list { display: flex; flex-direction: column; }
+        .detail-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 0; border-bottom: 1px solid var(--color-border); }
+        .detail-row:last-of-type { border-bottom: none; }
+        .empty-state { padding: 56px 24px; text-align: center; }
+        .empty-icon { width: 56px; height: 56px; border-radius: 16px; background: var(--color-surface-2); color: var(--color-faint); display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; }
+
+        /* Toasts. */
+        .toast-msg { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); padding: 13px 24px; border-radius: 12px; font-size: 0.9rem; font-weight: 600; box-shadow: 0 12px 32px rgba(16,16,16,.18); z-index: 9999; color: #fff; }
+
+        /* Voice mic buttons on fields + chat. */
+        .voice-hint { min-height: 1.2em; }
+        #chat-mic { flex: none; }
+        .tc-icon { vertical-align: -0.125em; flex: none; }
+        .btn .tc-icon { pointer-events: none; }
+
+        /* Typing indicator: three bouncing dots in an assistant bubble. */
+        .typing-dots { display: inline-flex; align-items: center; gap: 6px; padding: 6px 2px; }
+        .typing-dots span { width: 8px; height: 8px; border-radius: 50%; background: var(--color-faint); display: inline-block; }
+        @media (prefers-reduced-motion: no-preference) {
+            .typing-dots span { animation: typing-bounce 1.2s ease-in-out infinite; }
+            .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+            .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+            @keyframes typing-bounce { 0%, 60%, 100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-5px); opacity: 1; } }
+        }
+        /* Recording state: pulsing red ring + live timer on the mic. */
+        .mic-recording { position: relative; border-color: var(--color-danger) !important; color: var(--color-danger) !important; }
+        @media (prefers-reduced-motion: no-preference) {
+            .mic-recording::after { content: ""; position: absolute; inset: -4px; border-radius: var(--radius-md); border: 2px solid var(--color-danger); opacity: .6; animation: mic-pulse 1.2s ease-out infinite; pointer-events: none; }
+            @keyframes mic-pulse { 0% { transform: scale(.95); opacity: .7; } 100% { transform: scale(1.12); opacity: 0; } }
+        }
+        .rec-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--color-danger); margin-right: 6px; vertical-align: baseline; }
+        @media (prefers-reduced-motion: no-preference) {
+            .rec-dot { animation: pulse 1s ease-in-out infinite; }
+        }
+
+        /* OTP entry. */
+        .otp-input { font-size: 1.9rem; letter-spacing: 0.35em; text-align: center; text-indent: 0.35em; padding: 16px 8px; }
+
+        @media (max-width: 576px) {
+            .display-5 { font-size: 2rem; }
+            .fs-5 { font-size: 1.1rem !important; }
+            main.container { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+            .card-custom .card-body.p-md-5 { padding: 1.25rem !important; }
+            .step-labels { font-size: 0.62rem; }
+            .navbar-brand { font-size: 1.1rem !important; }
+        }
+    </style>
+</head>
+<body class="{% block body_class %}{% endblock %}">
+    {% block navbar %}
+    <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
+        <div class="container d-flex flex-wrap align-items-center gap-2">
+            <a class="navbar-brand fw-bold fs-4 me-auto" href="{% url 'home' %}">LockTrans</a>
+            <div class="d-none d-md-flex align-items-center gap-1">
+                <a href="{% url 'home' %}#how-it-works" class="nav-link-custom">How it works</a>
+                <a href="{% url 'create_contract' %}" class="nav-link-custom">Create Escrow</a>
+                <a href="{% url 'agent:chat' %}" class="nav-link-custom">Assistant</a>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <a href="{% url 'agent:chat' %}" class="btn btn-sm btn-outline-light d-md-none">
+                    <svg class="tc-icon me-1" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M7.657 6.247c.11-.33.576-.33.686 0l.645 1.937a2.89 2.89 0 0 0 1.829 1.828l1.936.645c.33.11.33.576 0 .686l-1.937.645a2.89 2.89 0 0 0-1.828 1.829l-.645 1.936a.361.361 0 0 1-.686 0l-.645-1.937a2.89 2.89 0 0 0-1.828-1.828l-1.937-.645a.361.361 0 0 1 0-.686l1.937-.645a2.89 2.89 0 0 0 1.828-1.828zM3.794 1.148a.217.217 0 0 1 .412 0l.387 1.162c.173.518.579.924 1.097 1.097l1.162.387a.217.217 0 0 1 0 .412l-1.162.387A1.73 1.73 0 0 0 4.593 5.69l-.387 1.162a.217.217 0 0 1-.412 0L3.407 5.69A1.73 1.73 0 0 0 2.31 4.593l-1.162-.387a.217.217 0 0 1 0-.412l1.162-.387A1.73 1.73 0 0 0 3.407 2.31zM10.863.099a.145.145 0 0 1 .274 0l.258.774c.115.346.386.617.732.732l.774.258a.145.145 0 0 1 0 .274l-.774.258a1.16 1.16 0 0 0-.732.732l-.258.774a.145.145 0 0 1-.274 0l-.258-.774a1.16 1.16 0 0 0-.732-.732L9.1 2.137a.145.145 0 0 1 0-.274l.774-.258c.346-.115.617-.386.732-.732z"/></svg>Assistant
+                </a>
+                {% if request.resolver_match.url_name != 'my_escrow' and request.resolver_match.url_name != 'my_escrow_verify_otp' and request.resolver_match.url_name != 'my_escrow_list' %}
+                <a href="{% url 'my_escrow' %}" class="btn btn-sm btn-primary-custom">
+                    <svg class="tc-icon me-1" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.764c.958 0 1.76.56 2.311 1.184C7.985 3.648 8.48 4 9 4h4.5A1.5 1.5 0 0 1 15 5.5v.64c.57.265.94.876.856 1.546l-.64 5.124A2.5 2.5 0 0 1 12.733 15H3.266a2.5 2.5 0 0 1-2.481-2.19l-.64-5.124A1.5 1.5 0 0 1 1 6.14zM2 6h12v-.5a.5.5 0 0 0-.5-.5H9c-.964 0-1.71-.629-2.174-1.154C6.374 3.334 5.82 3 5.264 3H2.5a.5.5 0 0 0-.5.5zm-.367 1a.5.5 0 0 0-.496.562l.64 5.124A1.5 1.5 0 0 0 3.266 14h9.468a1.5 1.5 0 0 0 1.489-1.314l.64-5.124A.5.5 0 0 0 14.367 7z"/></svg>My Escrow
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+    {% endblock %}
+
+    <main class="container py-3 py-md-4">
+        {% if DEMO_MODE %}
+        <div class="alert alert-info border-0 small" role="alert">
+            <strong>Demo mode:</strong> use code <span class="mono-text">{{ DEMO_OTP_CODE }}</span> wherever an email verification code is asked. Payments are simulated, no real money moves.
+        </div>
+        {% endif %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show border-0" role="alert">
+                    {% if message.tags == "error" %}<svg class="tc-icon me-2" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+  <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/></svg>{% else %}<svg class="tc-icon me-2" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+  <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/></svg>{% endif %}
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="mt-5 footer-custom">
+        <div class="container py-5">
+            <div class="row g-4">
+                <div class="col-12 col-md-6">
+                    <p class="fw-bold mb-1 fs-5" style="color: #fff;">LockTrans</p>
+                    <p class="small mb-0" style="max-width: 20rem; color: #8A857D;">Accountless escrow for social commerce. Funds stay locked until both sides confirm.</p>
+                </div>
+                <div class="col-6 col-md-3">
+                    <p class="small fw-bold text-uppercase mb-2" style="color: #fff; letter-spacing: 0.08em;">Product</p>
+                    <a href="{% url 'home' %}#how-it-works" class="d-block small py-1 text-decoration-none" style="color: #B9B5AD;">How it works</a>
+                    <a href="{% url 'create_contract' %}" class="d-block small py-1 text-decoration-none" style="color: #B9B5AD;">Create Escrow</a>
+                    <a href="{% url 'my_escrow' %}" class="d-block small py-1 text-decoration-none" style="color: #B9B5AD;">My Escrows</a>
+                    <a href="{% url 'agent:chat' %}" class="d-block small py-1 text-decoration-none" style="color: #B9B5AD;">AI Assistant</a>
+                </div>
+                <div class="col-6 col-md-3">
+                    <p class="small fw-bold text-uppercase mb-2" style="color: #fff; letter-spacing: 0.08em;">Transact</p>
+                    <a href="{% url 'join_escrow_page' %}" class="d-block small py-1 text-decoration-none" style="color: #B9B5AD;">Join Escrow</a>
+                    <a href="{% url 'create_contract' %}" class="d-block small py-1 text-decoration-none" style="color: #B9B5AD;">Start a Deal</a>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap justify-content-between gap-2 pt-3 mt-4" style="border-top: 1px solid rgba(255,255,255,.08);">
+                <p class="small mb-0" style="color: #8A857D;">&copy; {% now "Y" %} LockTrans &middot; Accountless Escrow for Social Commerce</p>
+                <p class="small mb-0" style="color: #7DD3FC;">Funds are held securely until both sides confirm.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script>
+        // Copy-to-clipboard for escrow codes and account numbers.
+        document.addEventListener('click', function (event) {
+            var button = event.target.closest('[data-copy]');
+            if (!button) return;
+            var value = button.getAttribute('data-copy');
+            var done = function () {
+                var original = button.innerHTML;
+                var hasText = button.textContent.trim().length > 0;
+                button.innerHTML = hasText
+                    ? '<svg class="tc-icon me-1" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z"/></svg>Copied'
+                    : '<svg class="tc-icon" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z"/></svg>';
+                button.classList.add('copied');
+                setTimeout(function () {
+                    button.innerHTML = original;
+                    button.classList.remove('copied');
+                }, 1500);
+            };
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(value).then(done);
+            } else {
+                var input = document.createElement('textarea');
+                input.value = value;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+                done();
+            }
+        });
+
+        // Countdown to the end of the buyer's inspection window.
+        function tickCountdowns() {
+            document.querySelectorAll('[data-countdown]').forEach(function (el) {
+                var target = document.querySelector('[data-deadline]');
+                if (!target) return;
+                var deadline = new Date(target.getAttribute('data-deadline'));
+                if (isNaN(deadline)) return;
+                var remaining = Math.max(0, deadline - new Date());
+                var mins = Math.floor(remaining / 60000);
+                var hours = Math.floor(mins / 60);
+                el.hidden = false;
+                el.textContent = remaining === 0
+                    ? 'Expiring'
+                    : (hours >= 24
+                        ? Math.floor(hours / 24) + 'd ' + (hours % 24) + 'h left'
+                        : hours + 'h ' + (mins % 60) + 'm left');
+            });
+        }
+        document.addEventListener('DOMContentLoaded', tickCountdowns);
+        setInterval(tickCountdowns, 30000);
+        document.body.addEventListener('htmx:afterSwap', tickCountdowns);
+    </script>
+</body>
+</html>

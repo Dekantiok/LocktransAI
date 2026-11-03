@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block title %}My Escrows | LockTrans{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-10 col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <svg class="tc-icon text-accent" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" style="font-size:1.5rem" viewBox="0 0 16 16"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.764c.958 0 1.76.56 2.311 1.184C7.985 3.648 8.48 4 9 4h4.5A1.5 1.5 0 0 1 15 5.5v.64c.57.265.94.876.856 1.546l-.64 5.124A2.5 2.5 0 0 1 12.733 15H3.266a2.5 2.5 0 0 1-2.481-2.19l-.64-5.124A1.5 1.5 0 0 1 1 6.14zM2 6h12v-.5a.5.5 0 0 0-.5-.5H9c-.964 0-1.71-.629-2.174-1.154C6.374 3.334 5.82 3 5.264 3H2.5a.5.5 0 0 0-.5.5zm-.367 1a.5.5 0 0 0-.496.562l.64 5.124A1.5 1.5 0 0 0 3.266 14h9.468a1.5 1.5 0 0 0 1.489-1.314l.64-5.124A.5.5 0 0 0 14.367 7z"/></svg>
+                    <span class="mono-text text-accent small fw-bold">MY ESCROWS</span>
+                </div>
+                <h2 class="fw-bold mb-0" style="letter-spacing:-0.02em;">Your Active Transactions</h2>
+            </div>
+            <span class="mono-text text-muted-custom small text-break">{{ email }}</span>
+        </div>
+
+        {% if escrows %}
+            <div class="row g-3">
+                {% for c in escrows %}
+                <div class="col-12">
+                    <a href="{% url 'contract_detail' c.code %}" class="text-decoration-none">
+                        <div class="card-custom card-interactive h-100 p-3 p-md-4">
+                            <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
+                                <div>
+                                    <h5 class="fw-bold mb-1 text-black" style="color:var(--color-black);">{{ c.title }}</h5>
+                                    <span class="mono-text text-muted-custom small"><svg class="tc-icon me-1" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8.39 12.648a1 1 0 0 0-.015.18c0 .305.21.508.5.508.266 0 .492-.172.555-.477l.554-2.703h1.204c.421 0 .617-.234.617-.547 0-.312-.188-.53-.617-.53h-.985l.516-2.524h1.265c.43 0 .618-.227.618-.547 0-.313-.188-.524-.618-.524h-1.046l.476-2.304a1 1 0 0 0 .016-.164.51.51 0 0 0-.516-.516.54.54 0 0 0-.539.43l-.523 2.554H7.617l.477-2.304c.008-.04.015-.118.015-.164a.51.51 0 0 0-.523-.516.54.54 0 0 0-.531.43L6.53 5.484H5.414c-.43 0-.617.22-.617.532s.187.539.617.539h.906l-.515 2.523H4.609c-.421 0-.609.219-.609.531s.188.547.61.547h.976l-.516 2.492c-.008.04-.015.125-.015.18 0 .305.21.508.5.508.265 0 .492-.172.554-.477l.555-2.703h2.242zm-1-6.109h2.266l-.515 2.563H6.859l.532-2.563z"/></svg>{{ c.code }}</span>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge {{ c.badge_class }} px-2.5 py-1 small">{{ c.status_label }}</span>
+                                    <svg class="tc-icon text-muted-custom small" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg>
+                                </div>
+                            </div>
+                            <p class="text-muted-custom small mb-3" style="color:var(--color-muted);">{{ c.description|truncatechars:120 }}</p>
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-2 border-top border-light-subtle">
+                                <div>
+                                    <span class="small text-muted-custom">Your Role:</span>
+                                    <span class="badge ms-1" style="background:var(--color-bg);color:var(--color-black);border:1px solid var(--color-border);">{{ c.user_role|title }}</span>
+                                </div>
+                                <div class="fw-bold mono-text fs-6">{{ c.formatted_amount }}</div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="card-custom">
+                <div class="card-body p-5 text-center">
+                    <div class="d-inline-flex align-items-center justify-content-center mb-3 rounded-circle" style="width:64px;height:64px;background:var(--color-bg);">
+                        <svg class="tc-icon text-muted-custom" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" style="font-size:2rem" viewBox="0 0 16 16"><path d="M4.98 4a.5.5 0 0 0-.39.188L1.54 8H6a.5.5 0 0 1 .5.5 1.5 1.5 0 1 0 3 0A.5.5 0 0 1 10 8h4.46l-3.05-3.812A.5.5 0 0 0 11.02 4zm9.954 5H10.45a2.5 2.5 0 0 1-4.9 0H1.066l.32 2.562a.5.5 0 0 0 .497.438h12.234a.5.5 0 0 0 .496-.438zM3.809 3.563A1.5 1.5 0 0 1 4.981 3h6.038a1.5 1.5 0 0 1 1.172.563l3.7 4.625a.5.5 0 0 1 .105.374l-.39 3.124A1.5 1.5 0 0 1 14.117 13H1.883a1.5 1.5 0 0 1-1.489-1.314l-.39-3.124a.5.5 0 0 1 .106-.374z"/></svg>
+                    </div>
+                    <h5 class="fw-bold mb-2">No Active Escrows</h5>
+                    <p class="text-muted-custom small mb-4">You don't have any active escrow transactions with this email.</p>
+                    <div class="d-flex justify-content-center gap-2 flex-wrap">
+                        <a href="{% url 'create_contract' %}" class="btn btn-primary-custom">
+                            <svg class="tc-icon me-2" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+  <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/></svg>Create New Escrow
+                        </a>
+                        <a href="{% url 'join_escrow_page' %}" class="btn btn-outline-dark-custom">
+                            <svg class="tc-icon me-1" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1 1 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4 4 0 0 1-.128-1.287z"/>
+  <path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 1 0-4.243-4.243z"/></svg>Join Escrow
+                        </a>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

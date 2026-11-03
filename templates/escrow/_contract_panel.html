@@ -1,0 +1,333 @@
+{% comment %}
+Polled region for an escrow. The wrapper carries the hx-* attributes so a swap
+re-inserts them and polling continues. Polling is omitted for terminal escrows
+and while the tab is hidden, so a closed escrow costs nothing.
+{% endcomment %}
+<div class="row justify-content-center"
+     id="escrow-panel"
+     {% if is_live %}hx-get="{% url 'contract_detail' contract.code %}"
+     hx-trigger="load delay:1s, every 15s [document.visibilityState==='visible']"
+     hx-swap="outerHTML"{% endif %}>
+    <div class="col-12 col-md-8 col-lg-6">
+
+        <div class="card card-custom mb-3">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start mb-1">
+                    <h3 class="text-navy fw-bold mb-0">{{ contract.title }}</h3>
+                    <span class="badge {{ badge_class }} px-3 py-2">{{ status_label }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="badge bg-light text-dark border">{{ role_label }}</span>
+                    {% if is_live %}
+                    <span class="small text-muted-custom d-inline-flex align-items-center gap-1">
+                        <span class="live-dot"></span>Live
+                    </span>
+                    {% endif %}
+                </div>
+
+                <div class="progress mb-1" style="height:6px;" role="progressbar"
+                     aria-label="Escrow progress" aria-valuenow="{{ progress_pct }}"
+                     aria-valuemin="0" aria-valuemax="100">
+                    <div class="progress-bar" style="width: {{ progress_pct }}%"></div>
+                </div>
+                <div class="step-labels">
+                    <span class="{% if stage >= 2 %}text-dark fw-bold{% else %}text-muted-custom{% endif %}">Created</span>
+                    <span class="{% if stage >= 4 %}text-dark fw-bold{% else %}text-muted-custom{% endif %}">Funded</span>
+                    <span class="{% if stage >= 5 %}text-dark fw-bold{% else %}text-muted-custom{% endif %}">Dispatched</span>
+                    <span class="{% if stage >= 6 %}text-dark fw-bold{% else %}text-muted-custom{% endif %}">Inspected</span>
+                    <span class="{% if stage >= 8 %}text-dark fw-bold{% else %}text-muted-custom{% endif %}">Settled</span>
+                </div>
+
+                <hr>
+
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <div class="small text-muted">Escrow Code</div>
+                        <div class="fw-bold mono-text text-navy fs-5">{{ contract.code }}</div>
+                    </div>
+                    <button type="button" class="copy-btn" data-copy="{{ contract.code }}"
+                            title="Copy escrow code">
+                        <svg class="tc-icon me-1" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/>
+  <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/></svg>Copy
+                    </button>
+                </div>
+
+                <p class="text-secondary small mb-3" style="line-height:1.6; white-space:pre-line;">{{ contract.description }}</p>
+
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="small text-muted">Amount</div>
+                        <div class="fw-bold mono-text text-navy fs-5">{{ formatted_amount }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="small text-muted">Service Fee</div>
+                        <div class="fw-bold mono-text text-navy fs-5">{{ formatted_fee }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="small text-muted">Fee Payer</div>
+                        <div class="fw-semibold text-capitalize">{{ contract.fee_payer }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="small text-muted">Inspection Window</div>
+                        <div class="fw-semibold">{{ contract.inspection_days }} days</div>
+                    </div>
+                    <div class="col-12 col-sm-6">
+                        <div class="small text-muted">Creator ({% if contract.creator_role == 'buyer' %}Buyer{% else %}Seller{% endif %}){% if is_buyer and contract.creator_role == 'buyer' or is_seller and contract.creator_role == 'seller' %}&nbsp;<span class="badge bg-light text-dark border">You</span>{% endif %}</div>
+                        <div class="small mono-text text-break">{{ contract.creator_email }}</div>
+                    </div>
+                    <div class="col-12 col-sm-6">
+                        <div class="small text-muted">Counterparty ({% if contract.creator_role == 'buyer' %}Seller{% else %}Buyer{% endif %}){% if is_buyer and contract.creator_role == 'seller' or is_seller and contract.creator_role == 'buyer' %}&nbsp;<span class="badge bg-light text-dark border">You</span>{% endif %}</div>
+                        <div class="small mono-text text-break">{{ contract.counterparty_email }}</div>
+                    </div>
+                    {% if contract.status == 'in_inspection' %}
+                    <div class="col-12">
+                        <div class="alert alert-warning border-0 py-2 small mb-0 d-flex justify-content-between align-items-center">
+                            <span>
+                                <svg class="tc-icon me-1" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M2.5 15a.5.5 0 1 1 0-1h1v-1a4.5 4.5 0 0 1 2.557-4.06c.29-.139.443-.377.443-.59v-.7c0-.213-.154-.451-.443-.59A4.5 4.5 0 0 1 3.5 3V2h-1a.5.5 0 0 1 0-1h11a.5.5 0 0 1 0 1h-1v1a4.5 4.5 0 0 1-2.557 4.06c-.29.139-.443.377-.443.59v.7c0 .213.154.451.443.59A4.5 4.5 0 0 1 12.5 13v1h1a.5.5 0 0 1 0 1zm2-13v1c0 .537.12 1.045.337 1.5h6.326c.216-.455.337-.963.337-1.5V2zm3 6.35c0 .701-.478 1.236-1.011 1.492A3.5 3.5 0 0 0 4.5 13s.866-1.299 3-1.48zm1 0v3.17c2.134.181 3 1.48 3 1.48a3.5 3.5 0 0 0-1.989-3.158C8.978 9.586 8.5 9.052 8.5 8.351z"/></svg>
+                                Inspection ends
+                                <strong data-deadline="{{ contract.inspection_ends|date:'c' }}">
+                                    {{ inspection_ends_display }}
+                                </strong>
+                            </span>
+                            <span class="badge bg-warning text-dark" data-countdown hidden></span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {% comment %}Single-role sessions never show both sides; block kept for compatibility.{% endcomment %}
+        {% if show_role_overlap_notice %}
+        <div class="alert alert-warning border-0 py-2 small mb-3">
+            <svg class="tc-icon me-1" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1zm-7.978-1L7 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.457.76 1.72l-.008.002-.014.002zM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4m3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0M6.936 9.28a6 6 0 0 0-1.23-.247A7 7 0 0 0 5 9c-4 0-5 3-5 4q0 1 1 1h4.216A2.24 2.24 0 0 1 5 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816M4.92 10A5.5 5.5 0 0 0 4 13H1c0-.26.164-1.03.76-1.724.545-.636 1.492-1.256 3.16-1.275ZM1.5 5.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0m3-2a2 2 0 1 0 0 4 2 2 0 0 0 0-4"/></svg>
+            Session role notice.
+        </div>
+        {% endif %}
+
+        {% if show_disputed_notice %}
+        <div class="card card-custom border-danger mb-3">
+            <div class="card-body p-4 text-center">
+                <div class="d-inline-flex align-items-center justify-content-center mb-3 rounded-circle text-danger" style="width:56px;height:56px;background:rgba(220, 38, 38, 0.1);">
+                    <svg class="tc-icon" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" style="font-size:2rem" viewBox="0 0 16 16"><path d="M11.46.146A.5.5 0 0 0 11.107 0H4.893a.5.5 0 0 0-.353.146L.146 4.54A.5.5 0 0 0 0 4.893v6.214a.5.5 0 0 0 .146.353l4.394 4.394a.5.5 0 0 0 .353.146h6.214a.5.5 0 0 0 .353-.146l4.394-4.394a.5.5 0 0 0 .146-.353V4.893a.5.5 0 0 0-.146-.353zM8 4c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995A.905.905 0 0 1 8 4m.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/></svg>
+                </div>
+                <h5 class="text-navy fw-bold mb-2">Dispute Raised</h5>
+                <p class="text-muted small mb-0">
+                    Funds are held while our team reviews this escrow. We will contact both
+                    parties by email with the outcome.
+                </p>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if show_payment_button %}
+        <div class="card card-custom border-primary-custom mb-3">
+            <div class="card-body p-4 text-center">
+                <h5 class="text-navy fw-bold mb-2">Make Payment</h5>
+                <p class="text-muted small mb-4">Fund the escrow to secure the transaction. Funds are held safely until you inspect and approve the item.</p>
+                <form method="post" action="{% url 'initiate_payment' contract.code %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary-custom btn-lg w-100">
+                        <svg class="tc-icon me-2" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v1h14V4a1 1 0 0 0-1-1zm13 4H1v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1z"/>
+  <path d="M2 10a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>Proceed to Payment
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if show_seller_dispatch_button %}
+        <div class="card card-custom border-warning mb-3">
+            <div class="card-body p-4 text-center">
+                <h5 class="text-navy fw-bold mb-2">Confirm Dispatch</h5>
+                <p class="text-muted small mb-4">Funds are secured. Confirm that you have dispatched the item or service to the buyer.</p>
+                <form method="post" action="{% url 'seller_confirm_dispatch' contract.code %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-warning btn-lg w-100 text-dark fw-semibold">
+                        <svg class="tc-icon me-2" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8.186 1.113a.5.5 0 0 0-.372 0L1.846 3.5l2.404.961L10.404 2zm3.564 1.426L5.596 5 8 5.961 14.154 3.5zm3.25 1.7-6.5 2.6v7.922l6.5-2.6V4.24zM7.5 14.762V6.838L1 4.239v7.923zM7.443.184a1.5 1.5 0 0 1 1.114 0l7.129 2.852A.5.5 0 0 1 16 3.5v8.662a1 1 0 0 1-.629.928l-7.185 2.874a.5.5 0 0 1-.372 0L.63 13.09a1 1 0 0 1-.63-.928V3.5a.5.5 0 0 1 .314-.464z"/></svg>Confirm Item Dispatched
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if show_seller_vault_form %}
+        <div class="card card-custom border-warning mb-3">
+            <div class="card-body p-4 text-center">
+                <h5 class="text-navy fw-bold mb-2">Add Payout Details</h5>
+                <p class="text-muted small mb-4">Add the bank account where you want to be paid when this escrow completes.</p>
+                <a href="{% url 'seller_add_vault' contract.code %}" class="btn btn-primary-custom btn-lg w-100">
+                    <svg class="tc-icon me-2" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="m8 0 6.61 3h.89a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5H15v7a.5.5 0 0 1 .485.38l.5 2a.498.498 0 0 1-.485.62H.5a.498.498 0 0 1-.485-.62l.5-2A.5.5 0 0 1 1 13V6H.5a.5.5 0 0 1-.5-.5v-2A.5.5 0 0 1 .5 3h.89zM3.777 3h8.447L8 1zM2 6v7h1V6zm2 0v7h2.5V6zm3.5 0v7h1V6zm2 0v7H12V6zM13 6v7h1V6zm2-1V4H1v1zm-.39 9H1.39l-.25 1h13.72z"/></svg>Enter Bank Details
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if show_buyer_confirm_receipt %}
+        <div class="card card-custom border-primary-custom mb-3">
+            <div class="card-body p-4 text-center">
+                <h5 class="text-navy fw-bold mb-2">Confirm Item Received</h5>
+                <p class="text-muted small mb-4">Have you received the item or service? Confirming starts your {{ contract.inspection_days }}-day inspection window.</p>
+                <form method="post" action="{% url 'buyer_confirm_receipt' contract.code %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary-custom btn-lg w-100">
+                        <svg class="tc-icon me-2" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M3.5 6a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5v-8a.5.5 0 0 0-.5-.5h-2a.5.5 0 0 1 0-1h2A1.5 1.5 0 0 1 14 6.5v8a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 14.5v-8A1.5 1.5 0 0 1 3.5 5h2a.5.5 0 0 1 0 1z"/>
+  <path fill-rule="evenodd" d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z"/></svg>Yes, I Received It
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if show_buyer_release_funds %}
+        <div class="card card-custom border-success mb-3">
+            <div class="card-body p-4 text-center">
+                <h5 class="text-navy fw-bold mb-2">Release Funds to Seller</h5>
+                <p class="text-muted small mb-4">Satisfied with the item? Releasing pays the seller immediately and cannot be undone.</p>
+                <form method="post" action="{% url 'buyer_release_funds' contract.code %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success btn-lg w-100 fw-semibold">
+                        <svg class="tc-icon me-2" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+  <path d="m10.97 4.97-.02.022-3.473 4.425-2.093-2.094a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05"/></svg>Release Funds Now
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if show_buyer_raise_dispute %}
+        <div class="card card-custom border-danger mb-3">
+            <div class="card-body p-4 text-center">
+                <h5 class="text-navy fw-bold mb-2">Raise Dispute</h5>
+                <p class="text-muted small mb-4">Something wrong? Raising a dispute locks the funds while our support team investigates.</p>
+                <form method="post" action="{% url 'buyer_raise_dispute' contract.code %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger btn-lg w-100 fw-semibold">
+                        <svg class="tc-icon me-2" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M7.938 2.016A.13.13 0 0 1 8.002 2a.13.13 0 0 1 .063.016.15.15 0 0 1 .054.057l6.857 11.667c.036.06.035.124.002.183a.2.2 0 0 1-.054.06.1.1 0 0 1-.066.017H1.146a.1.1 0 0 1-.066-.017.2.2 0 0 1-.054-.06.18.18 0 0 1 .002-.183L7.884 2.073a.15.15 0 0 1 .054-.057m1.044-.45a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767z"/>
+  <path d="M7.002 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 5.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/></svg>Raise Dispute
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if show_seller_raise_dispute %}
+        <div class="card card-custom border-danger mb-3">
+            <div class="card-body p-4 text-center">
+                <h5 class="text-navy fw-bold mb-2">Raise Dispute</h5>
+                <p class="text-muted small mb-4">Something wrong? Raising a dispute locks the funds while our support team investigates.</p>
+                <form method="post" action="{% url 'seller_raise_dispute' contract.code %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger btn-lg w-100 fw-semibold">
+                        <svg class="tc-icon me-2" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M7.938 2.016A.13.13 0 0 1 8.002 2a.13.13 0 0 1 .063.016.15.15 0 0 1 .054.057l6.857 11.667c.036.06.035.124.002.183a.2.2 0 0 1-.054.06.1.1 0 0 1-.066.017H1.146a.1.1 0 0 1-.066-.017.2.2 0 0 1-.054-.06.18.18 0 0 1 .002-.183L7.884 2.073a.15.15 0 0 1 .054-.057m1.044-.45a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767z"/>
+  <path d="M7.002 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 5.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/></svg>Raise Dispute
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if show_cancel_button %}
+        <div class="card card-custom mb-3">
+            <div class="card-body p-4 text-center">
+                <h5 class="text-navy fw-bold mb-2">Cancel Escrow</h5>
+                <p class="text-muted small mb-4">No payment has been taken yet. Cancelling closes this escrow immediately.</p>
+                <form method="post" action="{% url 'cancel_escrow' contract.code %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-dark-custom btn-lg w-100">
+                        <svg class="tc-icon me-2" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+  <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"/></svg>Cancel Escrow
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if show_settlement_vault %}
+        <div class="card card-custom mb-3">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <svg class="tc-icon text-accent" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" style="font-size:1.25rem" viewBox="0 0 16 16"><path d="m8 0 6.61 3h.89a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5H15v7a.5.5 0 0 1 .485.38l.5 2a.498.498 0 0 1-.485.62H.5a.498.498 0 0 1-.485-.62l.5-2A.5.5 0 0 1 1 13V6H.5a.5.5 0 0 1-.5-.5v-2A.5.5 0 0 1 .5 3h.89zM3.777 3h8.447L8 1zM2 6v7h1V6zm2 0v7h2.5V6zm3.5 0v7h1V6zm2 0v7H12V6zM13 6v7h1V6zm2-1V4H1v1zm-.39 9H1.39l-.25 1h13.72z"/></svg>
+                    <h6 class="text-navy fw-bold mb-0">Settlement Vault</h6>
+                </div>
+                <div class="row g-3 small">
+                    <div class="col-6">
+                        <div class="text-muted">Payout method</div>
+                        <div class="fw-semibold">{{ vault_bank_name }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted">PayPal email</div>
+                        <div class="fw-semibold">{{ vault_account_name }}</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="text-muted">PayPal email</div>
+                        <div class="fw-semibold mono-text copyable">
+                            <span>{{ vault_account_number }}</span>
+                            {% if not vault_is_masked %}
+                            <button type="button" class="copy-btn" data-copy="{{ vault_account_number }}" title="Copy account number">
+                                <svg class="tc-icon" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/>
+  <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/></svg>
+                            </button>
+                            {% endif %}
+                        </div>
+                        {% if vault_is_masked %}
+                        <div class="text-muted-custom mt-1">Full details are visible only to the seller.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if show_seller_waiting %}
+        <div class="card card-custom mb-3">
+            <div class="card-body p-4 text-center">
+                <div class="d-inline-flex align-items-center justify-content-center mb-3 rounded-circle text-warning" style="width:56px;height:56px;background:rgba(234, 179, 8, 0.1);">
+                    <svg class="tc-icon" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" style="font-size:2rem" viewBox="0 0 16 16"><path d="M2.5 15a.5.5 0 1 1 0-1h1v-1a4.5 4.5 0 0 1 2.557-4.06c.29-.139.443-.377.443-.59v-.7c0-.213-.154-.451-.443-.59A4.5 4.5 0 0 1 3.5 3V2h-1a.5.5 0 0 1 0-1h11a.5.5 0 0 1 0 1h-1v1a4.5 4.5 0 0 1-2.557 4.06c-.29.139-.443.377-.443.59v.7c0 .213.154.451.443.59A4.5 4.5 0 0 1 12.5 13v1h1a.5.5 0 0 1 0 1zm2-13v1c0 .537.12 1.045.337 1.5h6.326c.216-.455.337-.963.337-1.5V2zm3 6.35c0 .701-.478 1.236-1.011 1.492A3.5 3.5 0 0 0 4.5 13s.866-1.299 3-1.48zm1 0v3.17c2.134.181 3 1.48 3 1.48a3.5 3.5 0 0 0-1.989-3.158C8.978 9.586 8.5 9.052 8.5 8.351z"/></svg>
+                </div>
+                <h5 class="text-navy fw-bold mb-2">Waiting for Buyer</h5>
+                <p class="text-muted small mb-0">Payout details are saved. Funds move to your account once the buyer approves the item, or when the inspection window ends.</p>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if show_seller_funds_released %}
+        <div class="card card-custom border-success mb-3">
+            <div class="card-body p-4 text-center">
+                <div class="d-inline-flex align-items-center justify-content-center mb-3 rounded-circle text-success" style="width:56px;height:56px;background:rgba(22, 163, 74, 0.1);">
+                    <svg class="tc-icon" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" style="font-size:2rem" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/></svg>
+                </div>
+                <h5 class="text-navy fw-bold mb-2">Funds Released</h5>
+                <p class="text-muted small mb-2">The buyer released the funds. The transfer to your bank account is being processed.</p>
+                <p class="fw-bold mono-text text-success fs-5 mb-0">{{ formatted_seller_receives }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if show_seller_completed %}
+        <div class="card card-custom border-success mb-3">
+            <div class="card-body p-4 text-center">
+                <div class="d-inline-flex align-items-center justify-content-center mb-3 rounded-circle text-success" style="width:56px;height:56px;background:rgba(22, 163, 74, 0.1);">
+                    <svg class="tc-icon" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" style="font-size:2rem" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/></svg>
+                </div>
+                <h5 class="text-navy fw-bold mb-2">Payment Complete</h5>
+                <p class="text-muted small mb-2">Funds have been sent to your bank account.</p>
+                <p class="fw-bold mono-text text-success fs-5 mb-0">{{ formatted_seller_receives }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if show_buyer_completed %}
+        <div class="card card-custom border-success mb-3">
+            <div class="card-body p-4 text-center">
+                <div class="d-inline-flex align-items-center justify-content-center mb-3 rounded-circle text-success" style="width:56px;height:56px;background:rgba(22, 163, 74, 0.1);">
+                    <svg class="tc-icon" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" style="font-size:2rem" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/></svg>
+                </div>
+                <h5 class="text-navy fw-bold mb-2">Escrow Complete</h5>
+                <p class="text-muted small mb-0">Funds have been released to the seller. This transaction is now closed.</p>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
