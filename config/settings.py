@@ -342,3 +342,4 @@ LOGGING = {
         },
     },
 }
+# NOTE: keep gateway timeouts conservative for sandbox + live.
