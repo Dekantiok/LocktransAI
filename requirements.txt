@@ -17,3 +17,5 @@ sqlparse==0.6.0
 tzdata==2026.4
 urllib3==2.8.0
 whitenoise==6.11.0
+
+# NOTE: pinned for hackathon reproducibility.
