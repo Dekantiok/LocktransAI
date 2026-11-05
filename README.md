@@ -373,3 +373,5 @@ Hold the chat mic (web) or send a WhatsApp voice note → `voice/transcriber.py`
 - Post-funding cancellation initiates an explicit provider refund (`initiate_refund`) tracked to `initiated` or `failed`; a cancelled escrow counts as refunded only after the provider confirms.
 - Agent cannot resolve disputes or bypass auth; payout release needs buyer confirmation plus verified seller bank details, and every consequential call is confirmation-gated, with prompt-injection and tool-spoofing covered by tests.
 - Keep `LOG_OTP_TO_CONSOLE=False` outside local dev.
+
+<!-- docs: LockTrans setup verified -->
