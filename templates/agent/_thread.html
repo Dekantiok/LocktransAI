@@ -35,5 +35,11 @@
     <strong>Your call:</strong>
     reply <em>yes</em> in chat to go ahead, or <em>discard</em> to drop it, nothing moves until you say so.
     {% endif %}
+    {% if pending_terms %}
+    <div class="mt-2 pt-2 border-top" style="border-color:rgba(0,0,0,.1) !important;">
+        <div class="mono-text">Amount {{ pending_terms.amount }} &middot; Fee {{ pending_terms.service_fee }} ({{ pending_terms.fee_payer }} pays)</div>
+        <div class="mono-text">Buyer pays {{ pending_terms.buyer_pays }} &middot; Seller receives {{ pending_terms.seller_receives }}</div>
+    </div>
+    {% endif %}
 </div>
 {% endif %}

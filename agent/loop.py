@@ -76,7 +76,9 @@ missing thing per message, most important first.
 list_my_escrows first when they ask what is new or what needs them, then get_authorized_escrow_status for the one they pick, never answer from memory.
 - When the draft is complete, FIRST call request_escrow_creation right \
 away, the backend holds it and tells you to present the exact terms. \
-THEN show the terms briefly and ask for confirmation. Never show terms \
+THEN show the terms briefly and ask for confirmation. Always include \
+the backend fee breakdown (amount, service fee, buyer pays, seller \
+receives) exactly as given, never omit the fee. Never show terms \
 and ask for confirmation WITHOUT calling the tool in the same turn, \
 otherwise the user is asked to confirm twice.
 - After the user confirms, call the SAME tool again with IDENTICAL \
@@ -221,6 +223,52 @@ def propose_action(conversation, name, arguments):
         'proposed_at': timezone.now().isoformat(),
     }
     conversation.save(update_fields=['pending_action'])
+
+
+def creation_terms_text(arguments):
+    """Server-computed fee breakdown for a creation proposal.
+
+    The model must present exact terms before the user confirms, but
+    prose comes from the model — without backend numbers the fee is
+    easily omitted. Returns '' when the draft can't be resolved, so
+    callers always degrade to the plain confirmation prompt.
+    """
+    try:
+        from escrow.forms import ContractCreationForm
+        from escrow.models import EscrowDraft
+        from escrow.services import calculate_service_fee
+        draft_id = (arguments or {}).get('draft_id')
+        draft = EscrowDraft.objects.filter(id=draft_id).first()
+        if draft is None:
+            return ''
+        form = ContractCreationForm({
+            'title': draft.title,
+            'description': draft.description,
+            'amount': draft.amount,
+            'fee_payer': draft.fee_payer,
+            'creator_email': draft.owner_email or 'you@example.com',
+            'creator_role': draft.creator_role,
+            'counterparty_email': draft.counterparty_email,
+            'inspection_days': draft.inspection_days,
+        })
+        if not form.is_valid():
+            return ''
+        cleaned = form.cleaned_data
+        fee = calculate_service_fee(cleaned['amount'])
+        amount = cleaned['amount']
+        if cleaned['fee_payer'] == 'buyer':
+            buyer_pays, seller_gets = amount + fee, amount
+        else:
+            buyer_pays, seller_gets = amount, amount - fee
+        return (
+            f"Exact terms (USD): amount ${amount:,.2f}, "
+            f"service fee ${fee:,.2f} (paid by {cleaned['fee_payer']}), "
+            f"buyer pays ${buyer_pays:,.2f}, "
+            f"seller receives ${seller_gets:,.2f}."
+        )
+    except Exception:
+        logger.exception("Could not build creation terms")
+        return ''
 
 
 def clear_proposal(conversation):
@@ -544,14 +592,16 @@ def run_turn(conversation, user_text, base_url='', session_key=''):
                     conversation, name, arguments
                 ):
                     propose_action(conversation, name, arguments)
-                    outcome = {
-                        'ok': False,
-                        'error': (
-                            'CONFIRMATION_REQUIRED: present the exact terms to '
-                            'the user and ask for explicit confirmation first. '
-                            'Do not call this tool again until they confirm.'
-                        ),
-                    }
+                    prompt = (
+                        'CONFIRMATION_REQUIRED: present the exact terms to '
+                        'the user and ask for explicit confirmation first. '
+                        'Do not call this tool again until they confirm.'
+                    )
+                    if name == 'request_escrow_creation':
+                        terms = creation_terms_text(arguments)
+                        if terms:
+                            prompt += f' {terms} Always show this fee breakdown.'
+                    outcome = {'ok': False, 'error': prompt}
                 else:
                     if name in CONSEQUENTIAL_TOOLS:
                         clear_proposal(conversation)

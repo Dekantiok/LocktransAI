@@ -25,6 +25,7 @@ from escrow.invitations import send_counterparty_invitation
 from escrow.models import EscrowDraft, TransitionError
 from escrow.services import (
     audit,
+    calculate_service_fee,
     consume_otp,
     create_escrow_from_validated,
     escrow_next_step,
@@ -59,6 +60,53 @@ def _conversation(request):
     return conversation
 
 
+def _pending_terms(pending):
+    """Server-computed fee breakdown for a pending creation proposal.
+
+    Rendered in the pending-confirmation panel so the fee is visible in
+    the UI even if the model's prose omitted it. None when the draft
+    can't be resolved or validated.
+    """
+    pending = pending or {}
+    if pending.get('tool') != 'request_escrow_creation':
+        return None
+    draft_id = (pending.get('arguments') or {}).get('draft_id') or pending.get('draft_id')
+    try:
+        draft = EscrowDraft.objects.filter(id=draft_id).first()
+        if draft is None:
+            return None
+        form = ContractCreationForm({
+            'title': draft.title,
+            'description': draft.description,
+            'amount': draft.amount,
+            'fee_payer': draft.fee_payer,
+            'creator_email': draft.owner_email or 'you@example.com',
+            'creator_role': draft.creator_role,
+            'counterparty_email': draft.counterparty_email,
+            'inspection_days': draft.inspection_days,
+        })
+        if not form.is_valid():
+            return None
+        cleaned = form.cleaned_data
+        fee = calculate_service_fee(cleaned['amount'])
+        amount = cleaned['amount']
+        if cleaned['fee_payer'] == 'buyer':
+            buyer_pays, seller_gets = amount + fee, amount
+        else:
+            buyer_pays, seller_gets = amount, amount - fee
+        money = lambda v: f"${v:,.2f}"  # noqa: E731
+        return {
+            'amount': money(amount),
+            'service_fee': money(fee),
+            'fee_payer': cleaned['fee_payer'],
+            'buyer_pays': money(buyer_pays),
+            'seller_receives': money(seller_gets),
+        }
+    except Exception:
+        logger.exception("Could not build pending terms")
+        return None
+
+
 def _thread_context(conversation, request):
     pending = conversation.pending_action or {}
     # A stale proposal must never resurface as a prompt after refresh:
@@ -71,6 +119,7 @@ def _thread_context(conversation, request):
     return {
         'messages': messages,
         'pending': pending if pending.get('tool') else None,
+        'pending_terms': _pending_terms(pending) if pending.get('tool') else None,
         'owner_email': conversation.owner_email,
         'pending_email': request.session.get('chat_pending_email', ''),
         'last_message_id': messages[-1].id if messages else 0,

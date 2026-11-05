@@ -251,6 +251,38 @@ class LoopTest(TestCase):
         convo.refresh_from_db()
         self.assertFalse(confirmed(convo, call['name'], call['arguments']))
 
+    def test_creation_confirmation_carries_fee_breakdown(self):
+        import json
+        from decimal import Decimal
+
+        from agent.loop import run_turn
+        from escrow.models import EscrowDraft
+        draft = EscrowDraft.objects.create(
+            owner_email='buyer@example.com', owner_session='',
+            title='Laptop', description='Used laptop',
+            amount=Decimal('500.00'), currency='USD', fee_payer='buyer',
+            creator_role='buyer', counterparty_email='seller@example.com',
+            inspection_days=3, status='draft',
+        )
+        convo = self.make_conversation(owner='buyer@example.com')
+        call = {'id': 'c1', 'name': 'request_escrow_creation',
+                'arguments': {'draft_id': draft.id}}
+        with self.script([{'text': '', 'tool_calls': [call], 'usage': {}}]):
+            run_turn(convo, 'Create it, I confirm the terms.')
+        outcome = json.loads(
+            convo.messages.filter(role='tool').order_by('-id').first().content)
+        self.assertFalse(outcome['ok'])
+        self.assertIn('CONFIRMATION_REQUIRED', outcome['error'])
+        # $500 -> $2.50 fee, buyer pays $502.50, seller receives $500.00
+        self.assertIn('$2.50', outcome['error'])
+        self.assertIn('$502.50', outcome['error'])
+        self.assertIn('$500.00', outcome['error'])
+
+    def test_creation_terms_empty_without_draft(self):
+        from agent.loop import creation_terms_text
+        self.assertEqual(creation_terms_text({}), '')
+        self.assertEqual(creation_terms_text({'draft_id': 999999}), '')
+
     def test_draft_id_string_matches_int_proposal(self):
         from agent.loop import confirmed, propose_action
         convo = self.make_conversation(owner='buyer@example.com')
@@ -637,3 +669,50 @@ class ChatViewTest(TestCase):
                 'paypal_email': 'seller@example.com',
                 'masked': 'se***@example.com'}})
         self.assertIn('seller@example.com', reply)
+
+
+class PendingTermsTest(TestCase):
+    def make_draft(self):
+        from decimal import Decimal
+        from escrow.models import EscrowDraft
+        return EscrowDraft.objects.create(
+            owner_email='buyer@example.com', owner_session='',
+            title='Laptop', description='Used laptop',
+            amount=Decimal('500.00'), currency='USD', fee_payer='buyer',
+            creator_role='buyer', counterparty_email='seller@example.com',
+            inspection_days=3, status='draft',
+        )
+
+    def test_pending_terms_breakdown(self):
+        from agent.views import _pending_terms
+        draft = self.make_draft()
+        terms = _pending_terms({'tool': 'request_escrow_creation',
+                                'arguments': {'draft_id': draft.id}})
+        self.assertIsNotNone(terms)
+        self.assertEqual(terms['service_fee'], '$2.50')
+        self.assertEqual(terms['buyer_pays'], '$502.50')
+        self.assertEqual(terms['seller_receives'], '$500.00')
+
+    def test_pending_terms_none_without_draft(self):
+        from agent.views import _pending_terms
+        self.assertIsNone(_pending_terms({}))
+        self.assertIsNone(_pending_terms(
+            {'tool': 'request_escrow_creation', 'arguments': {}}))
+        self.assertIsNone(_pending_terms(
+            {'tool': 'request_dispute_submission', 'arguments': {}}))
+
+    def test_thread_renders_fee_breakdown(self):
+        from django.template.loader import render_to_string
+        draft = self.make_draft()
+        from agent.views import _pending_terms
+        html = render_to_string('agent/_thread.html', {
+            'messages': [],
+            'pending': {'tool': 'request_escrow_creation',
+                        'arguments': {'draft_id': draft.id}},
+            'pending_terms': _pending_terms(
+                {'tool': 'request_escrow_creation',
+                 'arguments': {'draft_id': draft.id}}),
+            'last_message_id': 0,
+        })
+        self.assertIn('$2.50', html)
+        self.assertIn('$502.50', html)
