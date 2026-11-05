@@ -20,3 +20,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+# NOTE: entry point unchanged (Django admin + runserver).
