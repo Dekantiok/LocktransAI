@@ -42,7 +42,7 @@ class ContractCreationForm(forms.ModelForm):
         placeholders = {
             'title': 'e.g. MacBook Pro M3 or Web Design Milestone',
             'description': 'Specify the item condition, delivery terms, and acceptance criteria...',
-            'amount': '50000',
+            'amount': '500',
             'creator_email': 'you@example.com',
             'counterparty_email': 'counterparty@example.com',
             'inspection_days': '3',

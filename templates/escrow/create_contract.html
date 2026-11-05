@@ -43,7 +43,7 @@
                     <!-- Section 2: Financial Terms -->
                     <div class="row g-3 mb-3">
                         <div class="col-12 col-sm-6">
-                            <label for="{{ form.amount.id_for_label }}" class="form-label">Escrow Amount (₦)</label>
+                            <label for="{{ form.amount.id_for_label }}" class="form-label">Escrow Amount (USD $)</label>
                             {{ form.amount }}
                             {% if form.amount.help_text %}<small class="text-muted-custom d-block mt-1">{{ form.amount.help_text }}</small>{% endif %}
                             {% for error in form.amount.errors %}<div class="text-danger small mt-1"><svg class="tc-icon me-1" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
@@ -78,7 +78,7 @@
                         <div class="row g-2 small">
                             <div class="col-6">
                                 <span class="text-muted-custom">Service Fee:</span>
-                                <div class="mono-text fw-semibold text-navy" id="est-fee">₦1,500.00</div>
+                                <div class="mono-text fw-semibold text-navy" id="est-fee">$1.50</div>
                             </div>
                             <div class="col-6">
                                 <span class="text-muted-custom">Buyer Pays:</span>
@@ -93,11 +93,11 @@
                         </div>
                         <div class="collapse mt-3 pt-2 border-top" style="border-color:var(--color-border) !important;" id="feeTiersCollapse">
                             <div class="small text-muted-custom mb-2">Standard flat fee tiers:</div>
-                            <div class="fee-tier small"><span class="text-muted-custom">Up to ₦50,000</span><span class="mono-text text-navy">₦1,500</span></div>
-                            <div class="fee-tier small"><span class="text-muted-custom">₦50,001 – ₦100,000</span><span class="mono-text text-navy">₦2,000</span></div>
-                            <div class="fee-tier small"><span class="text-muted-custom">₦100,001 – ₦500,000</span><span class="mono-text text-navy">₦2,500</span></div>
-                            <div class="fee-tier small"><span class="text-muted-custom">₦500,001 – ₦1,000,000</span><span class="mono-text text-navy">₦5,000</span></div>
-                            <div class="fee-tier small"><span class="text-muted-custom">Above ₦1,000,000</span><span class="mono-text text-navy">₦10,000</span></div>
+                            <div class="fee-tier small"><span class="text-muted-custom">Up to $50</span><span class="mono-text text-navy">$1.50</span></div>
+                            <div class="fee-tier small"><span class="text-muted-custom">$50.01 – $100</span><span class="mono-text text-navy">$2.00</span></div>
+                            <div class="fee-tier small"><span class="text-muted-custom">$100.01 – $500</span><span class="mono-text text-navy">$2.50</span></div>
+                            <div class="fee-tier small"><span class="text-muted-custom">$500.01 – $1,000</span><span class="mono-text text-navy">$5.00</span></div>
+                            <div class="fee-tier small"><span class="text-muted-custom">Above $1,000</span><span class="mono-text text-navy">$10.00</span></div>
                         </div>
                     </div>
 
@@ -148,22 +148,22 @@
         var buyerEl = document.getElementById('est-buyer-total');
         var sellerEl = document.getElementById('est-seller-net');
 
-        function formatNaira(num) {
-            return '₦' + Number(num).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        function formatUSD(num) {
+            return '$' + Number(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
         function calculateFee(val) {
-            if (val <= 50000) return 1500;
-            if (val <= 100000) return 2000;
-            if (val <= 500000) return 2500;
-            if (val <= 1000000) return 5000;
-            return 10000;
+            if (val <= 50) return 1.50;
+            if (val <= 100) return 2.00;
+            if (val <= 500) return 2.50;
+            if (val <= 1000) return 5.00;
+            return 10.00;
         }
 
         function updateEstimate() {
             var val = parseFloat(amountInput ? amountInput.value : 0);
-            if (isNaN(val) || val < 100) {
-                if (feeEl) feeEl.textContent = '₦1,500.00';
+            if (isNaN(val) || val < 5) {
+                if (feeEl) feeEl.textContent = '$1.50';
                 if (buyerEl) buyerEl.textContent = '-';
                 if (sellerEl) sellerEl.textContent = '-';
                 return;
@@ -173,9 +173,9 @@
             var buyerTotal = payer === 'buyer' ? (val + fee) : val;
             var sellerNet = payer === 'seller' ? Math.max(0, val - fee) : val;
 
-            if (feeEl) feeEl.textContent = formatNaira(fee);
-            if (buyerEl) buyerEl.textContent = formatNaira(buyerTotal);
-            if (sellerEl) sellerEl.textContent = formatNaira(sellerNet);
+            if (feeEl) feeEl.textContent = formatUSD(fee);
+            if (buyerEl) buyerEl.textContent = formatUSD(buyerTotal);
+            if (sellerEl) sellerEl.textContent = formatUSD(sellerNet);
         }
 
         if (amountInput) amountInput.addEventListener('input', updateEstimate);

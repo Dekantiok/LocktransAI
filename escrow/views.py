@@ -77,7 +77,7 @@ STATUS_STAGE = {
 MONEY_STAGES = 8
 
 
-def naira(value):
+def money(value):
     return f"${value:,.2f}"
 
 
@@ -340,9 +340,9 @@ def contract_detail(request, code):
         # One device holds one role per contract, so both sides are never
         # shown together. Kept as False for template compatibility.
         'show_role_overlap_notice': False,
-        'formatted_amount': naira(contract.amount),
-        'formatted_fee': naira(contract.service_fee),
-        'formatted_seller_receives': naira(contract.seller_receives),
+        'formatted_amount': money(contract.amount),
+        'formatted_fee': money(contract.service_fee),
+        'formatted_seller_receives': money(contract.seller_receives),
     }
 
     if vault:
@@ -792,7 +792,7 @@ def my_escrow_list(request):
                 contract.creator_role if contract.creator_email == email
                 else ('seller' if contract.creator_role == 'buyer' else 'buyer')
             ),
-            'formatted_amount': naira(contract.amount),
+            'formatted_amount': money(contract.amount),
         })
 
     return render(

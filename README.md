@@ -129,7 +129,7 @@ Use two separate browser sessions, because each party needs its own identity. Ea
 
 **Person 1 (buyer), Browser A, home page chat:**
 
-1. Type or hold the mic and say: "I want to buy a laptop for 250000 from seller@example.com. My email is buyer@example.com, I am the buyer."
+1. Type or hold the mic and say: "I want to buy a laptop for 500 dollars from seller@example.com. My email is buyer@example.com, I am the buyer."
 2. When the assistant shows the terms, reply: "yes".
 3. When it says a code was sent, type `123456`. The escrow is created. Note the code, it looks like `LKTRaB3xK`. Share it with Person 2.
 
@@ -149,11 +149,11 @@ Use two separate browser sessions, because each party needs its own identity. Ea
 
 **Person 1 (buyer):**
 
-9. Say: "I received it", then confirm with "yes". Inspection starts. The seller is now asked for payout bank details.
+9. Say: "I received it", then confirm with "yes". Inspection starts. The seller is now asked for their PayPal payout email.
 
 **Person 2 (seller):**
 
-10. Say: "My bank is Guaranty Trust Bank, account number 0123456789", then confirm with "yes". The assistant states the verified account name returned by the backend. Read it back and check it is the name you expect.
+10. Say: "My PayPal email is seller@example.com", then confirm with "yes". The assistant confirms the payout email is saved and masked for the buyer. Check it matches the email you expect.
 
 **Person 1 (buyer):**
 

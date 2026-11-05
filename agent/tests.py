@@ -319,8 +319,8 @@ class ChatViewTest(TestCase):
                 role='user', content=text)
             ConversationMessage.objects.create(
                 conversation_id=conversation.id,
-                role='assistant', content='Fee is ₦1,500.')
-            return 'Fee is ₦1,500.'
+                role='assistant', content='Fee is $10.00.')
+            return 'Fee is $10.00.'
 
         with patch('agent.views.run_turn', side_effect=fake_turn) as mock_turn:
             response = self.client.post('/assistant/send/',
