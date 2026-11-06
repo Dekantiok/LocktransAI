@@ -155,9 +155,9 @@ and while the tab is hidden, so a closed escrow costs nothing.
         <div class="card card-custom border-warning mb-3">
             <div class="card-body p-4 text-center">
                 <h5 class="text-navy fw-bold mb-2">Add Payout Details</h5>
-                <p class="text-muted small mb-4">Add the bank account where you want to be paid when this escrow completes.</p>
+                <p class="text-muted small mb-4">Add the PayPal email where you want to be paid when this escrow completes.</p>
                 <a href="{% url 'seller_add_vault' contract.code %}" class="btn btn-primary-custom btn-lg w-100">
-                    <svg class="tc-icon me-2" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="m8 0 6.61 3h.89a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5H15v7a.5.5 0 0 1 .485.38l.5 2a.498.498 0 0 1-.485.62H.5a.498.498 0 0 1-.485-.62l.5-2A.5.5 0 0 1 1 13V6H.5a.5.5 0 0 1-.5-.5v-2A.5.5 0 0 1 .5 3h.89zM3.777 3h8.447L8 1zM2 6v7h1V6zm2 0v7h2.5V6zm3.5 0v7h1V6zm2 0v7H12V6zM13 6v7h1V6zm2-1V4H1v1zm-.39 9H1.39l-.25 1h13.72z"/></svg>Enter Bank Details
+                    <svg class="tc-icon me-2" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="m8 0 6.61 3h.89a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5H15v7a.5.5 0 0 1 .485.38l.5 2a.498.498 0 0 1-.485.62H.5a.498.498 0 0 1-.485-.62l.5-2A.5.5 0 0 1 1 13V6H.5a.5.5 0 0 1-.5-.5v-2A.5.5 0 0 1 .5 3h.89zM3.777 3h8.447L8 1zM2 6v7h1V6zm2 0v7h2.5V6zm3.5 0v7h1V6zm2 0v7H12V6zM13 6v7h1V6zm2-1V4H1v1zm-.39 9H1.39l-.25 1h13.72z"/></svg>Enter Payout Details
                 </a>
             </div>
         </div>
@@ -298,7 +298,7 @@ and while the tab is hidden, so a closed escrow costs nothing.
                     <svg class="tc-icon" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" style="font-size:2rem" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/></svg>
                 </div>
                 <h5 class="text-navy fw-bold mb-2">Funds Released</h5>
-                <p class="text-muted small mb-2">The buyer released the funds. The transfer to your bank account is being processed.</p>
+                <p class="text-muted small mb-2">The buyer released the funds. The PayPal payout to your email is being processed.</p>
                 <p class="fw-bold mono-text text-success fs-5 mb-0">{{ formatted_seller_receives }}</p>
             </div>
         </div>
@@ -311,7 +311,7 @@ and while the tab is hidden, so a closed escrow costs nothing.
                     <svg class="tc-icon" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor" style="font-size:2rem" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/></svg>
                 </div>
                 <h5 class="text-navy fw-bold mb-2">Payment Complete</h5>
-                <p class="text-muted small mb-2">Funds have been sent to your bank account.</p>
+                <p class="text-muted small mb-2">Funds have been sent to your PayPal email.</p>
                 <p class="fw-bold mono-text text-success fs-5 mb-0">{{ formatted_seller_receives }}</p>
             </div>
         </div>
