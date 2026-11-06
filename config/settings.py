@@ -305,6 +305,15 @@ TERMII_SEND_IN_DEBUG = os.environ.get('TERMII_SEND_IN_DEBUG', 'False') == 'True'
 
 # --- Security / deployment ---------------------------------------------------
 
+# Trusted origins for cross-site POSTs (tunnel/Ngrok hosts in dev,
+# canonical domain in prod). Parsed in all modes: with DEBUG=True the
+# dev server still rejects HTTPS origins not on this list.
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
+    if origin.strip()
+]
+
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
@@ -318,11 +327,6 @@ if not DEBUG:
     SECURE_REFERRER_POLICY = 'same-origin'
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     X_FRAME_OPTIONS = 'DENY'
-    CSRF_TRUSTED_ORIGINS = [
-        origin.strip()
-        for origin in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
-        if origin.strip()
-    ]
 
 LOGGING = {
     'version': 1,
