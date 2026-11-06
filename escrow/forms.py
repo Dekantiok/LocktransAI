@@ -92,10 +92,22 @@ class ContractCreationForm(forms.ModelForm):
 
 
 class SettlementVaultForm(forms.ModelForm):
-    # PayPal Payouts destination. No bank resolve; the email itself is the
-    # payout target and is verified as deliverable at payout time.
+    # PayPal Payouts destination. The seller verified their inbox via OTP,
+    # so the verified escrow email is the safest default: one tap, no
+    # spoofable typed address. A different PayPal email is allowed too.
+    DESTINATION_CHOICES = (
+        ('verified', 'Send to my verified email'),
+        ('other', 'Use a different PayPal email'),
+    )
+    destination = forms.ChoiceField(
+        label="Payout destination",
+        choices=DESTINATION_CHOICES,
+        initial='verified',
+        widget=forms.RadioSelect(attrs={'class': 'vault-radio'}),
+    )
     paypal_email = forms.EmailField(
         label="PayPal email",
+        required=False,
         widget=forms.EmailInput(attrs={
             'class': 'form-control',
             'placeholder': 'seller-paypal@example.com',
@@ -107,9 +119,28 @@ class SettlementVaultForm(forms.ModelForm):
         model = SettlementVault
         fields = ['paypal_email']
 
+    def __init__(self, *args, **kwargs):
+        self.verified_email = normalize_email(kwargs.pop('verified_email', '') or '')
+        super().__init__(*args, **kwargs)
+
     def clean_paypal_email(self):
         from .utils import normalize_email
-        email = normalize_email(self.cleaned_data.get('paypal_email') or '')
-        if not email or '@' not in email:
-            raise ValidationError("Enter a valid PayPal email address.")
-        return email
+        return normalize_email(self.cleaned_data.get('paypal_email') or '')
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('destination') == 'other':
+            email = cleaned.get('paypal_email') or ''
+            if not email or '@' not in email:
+                raise ValidationError("Enter a valid PayPal email address.")
+        elif not self.verified_email or '@' not in self.verified_email:
+            raise ValidationError(
+                "Your verified email is unavailable; choose a different PayPal email."
+            )
+        return cleaned
+
+    def get_paypal_email(self):
+        """Resolved payout destination honoring the seller's choice."""
+        if self.cleaned_data.get('destination') == 'other':
+            return self.cleaned_data.get('paypal_email')
+        return self.verified_email

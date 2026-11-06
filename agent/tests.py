@@ -127,6 +127,27 @@ class RegistryTest(TestCase):
                          actor_email='buyer@example.com')
         self.assertFalse(result['ok'])
 
+    def test_bank_tool_one_tap_uses_verified_email(self):
+        from agent.registry import execute
+        self.contract.transition_to('awaiting_dispatch')
+        result = execute('request_seller_bank_details',
+                         {'escrow_reference': 'AGENT001',
+                          'use_verified_email': True},
+                         actor_email='seller@example.com')
+        self.assertTrue(result['ok'], result)
+        self.assertEqual(result['data']['paypal_email'], 'seller@example.com')
+        from escrow.models import SettlementVault
+        self.assertEqual(
+            SettlementVault.objects.get().paypal_email, 'seller@example.com')
+
+    def test_bank_tool_needs_email_or_verified_flag(self):
+        from agent.registry import execute
+        self.contract.transition_to('awaiting_dispatch')
+        result = execute('request_seller_bank_details',
+                         {'escrow_reference': 'AGENT001'},
+                         actor_email='seller@example.com')
+        self.assertFalse(result['ok'])
+
     def test_unknown_tool_is_an_error_not_an_exception(self):
         from agent.registry import execute
         result = execute('delete_everything', {}, actor_email='a@b.com')

@@ -927,6 +927,7 @@ class LifecycleTest(TestCase):
 
     def test_settlement_vault_is_seller_only_and_one_per_contract(self):
         self.client.post(reverse('seller_add_vault', kwargs={'code': 'LIFE1'}), {
+            'destination': 'other',
             'paypal_email': 'seller@example.com',
         })
         self.assertEqual(SettlementVault.objects.count(), 1)
@@ -936,13 +937,22 @@ class LifecycleTest(TestCase):
 
         # A second attempt redirects without creating a second vault.
         response = self.client.post(reverse('seller_add_vault', kwargs={'code': 'LIFE1'}), {
+            'destination': 'other',
             'paypal_email': 'seller@example.com',
         })
         self.assertEqual(response.status_code, 302)
         self.assertEqual(SettlementVault.objects.count(), 1)
 
+    def test_vault_one_tap_uses_verified_email(self):
+        self.client.post(reverse('seller_add_vault', kwargs={'code': 'LIFE1'}), {
+            'destination': 'verified',
+        })
+        self.assertEqual(SettlementVault.objects.count(), 1)
+        self.assertEqual(SettlementVault.objects.get().paypal_email, SELLER)
+
     def test_vault_rejects_invalid_paypal_email(self):
         response = self.client.post(reverse('seller_add_vault', kwargs={'code': 'LIFE1'}), {
+            'destination': 'other',
             'paypal_email': 'not-an-email',
         })
         self.assertEqual(response.status_code, 200)

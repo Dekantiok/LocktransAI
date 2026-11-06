@@ -551,8 +551,13 @@ def tool_request_seller_bank_details(actor, **kwargs):
             'note': 'Payout email already saved; contact support to change it.',
         }}
     paypal_email = normalize_email(str(kwargs.get('paypal_email') or kwargs.get('account_number') or ''))
+    use_verified = str(kwargs.get('use_verified_email') or '').strip().lower() in ('true', '1', 'yes')
+    if not paypal_email and use_verified:
+        # The seller's identity was proven by email OTP: paying the
+        # verified inbox needs no extra address and cannot be spoofed.
+        paypal_email = actor
     if not paypal_email or '@' not in paypal_email:
-        raise ToolError("Ask the seller for their PayPal email address (e.g. seller@example.com).")
+        raise ToolError("Ask the seller for their PayPal email address (e.g. seller@example.com), or confirm sending to their verified email.")
     vault = SettlementVault.objects.create(
         contract=contract,
         paypal_email=paypal_email[:255],
@@ -745,10 +750,13 @@ TOOLS = [
             {}, []),
     _schema('request_seller_bank_details',
             'Save the seller’s PayPal payout email for an escrow. Only the '
-            'verified seller, only after explicit confirmation.',
+            'verified seller, only after explicit confirmation. Prefer '
+            'use_verified_email (pays their OTP-verified inbox, no typing); '
+            'only ask for paypal_email when they want a different address.',
             {'escrow_reference': _str('The escrow code.'),
-             'paypal_email': _str('Seller PayPal email.')},
-            ['escrow_reference', 'paypal_email']),
+             'paypal_email': _str('Seller PayPal email (only when they decline the verified inbox).'),
+             'use_verified_email': _str('Set true to pay the seller’s verified email.')},
+            ['escrow_reference']),
     _schema('request_dispute_submission',
             'Raise a dispute, freezing release until resolution. Only call '
             'after the user explicitly confirmed.',

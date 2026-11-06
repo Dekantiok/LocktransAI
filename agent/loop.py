@@ -66,8 +66,10 @@ missing thing per message, most important first.
   if seller_bank_saved is false, and whenever a seller checks an \
   escrow in dispatch/transit/inspection without saved details, \
   ask then too. Do not wait until release is attempted. \
-  Ask for the PayPal payout email, then call \
-  request_seller_bank_details with paypal_email, payouts go via PayPal. \
+  Offer one tap first: ask "Should I send it to your verified email \
+  (their address)?" and call request_seller_bank_details with \
+  use_verified_email true when they agree; only ask them to type a \
+  different paypal_email when they decline. Payouts go via PayPal. \
   After saving, confirm the masked email back to the seller. \
   RELEASE: buyer confirms in inspection -> request_release_approval. \
   If bank details are missing the seller is notified automatically; \

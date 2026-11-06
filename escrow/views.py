@@ -708,10 +708,13 @@ def seller_add_vault(request, code):
     if hasattr(contract, 'settlement_vault'):
         return redirect('contract_detail', code=contract.code)
 
+    seller_email = get_contract_verified_email(request, contract)
+
     if request.method == 'POST':
-        form = SettlementVaultForm(request.POST)
+        form = SettlementVaultForm(request.POST, verified_email=seller_email)
         if form.is_valid():
             vault = form.save(commit=False)
+            vault.paypal_email = form.get_paypal_email()
             vault.contract = contract
             vault.account_name = vault.paypal_email[:150]
             vault.bank_name = 'PayPal'
@@ -722,11 +725,12 @@ def seller_add_vault(request, code):
             )
             return redirect('contract_detail', code=contract.code)
     else:
-        form = SettlementVaultForm()
+        form = SettlementVaultForm(verified_email=seller_email)
 
     return render(
         request, 'escrow/add_vault.html',
-        {'form': form, 'contract': contract},
+        {'form': form, 'contract': contract,
+         'verified_email': seller_email},
     )
 
 
