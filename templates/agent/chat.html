@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block title %}AI Assistant | LockTrans{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
@@ -46,21 +47,5 @@
         </div>
     </div>
 </div>
-<script>
-(function () {
-    function scrollThread() {
-        var thread = document.getElementById('chat-thread');
-        if (thread) thread.scrollTop = thread.scrollHeight;
-    }
-    document.body.addEventListener('htmx:afterSwap', function (event) {
-        if (event.detail.target && event.detail.target.id === 'chat-result') {
-            scrollThread();
-            var input = document.getElementById('chat-input');
-            if (input) { input.value = ''; input.focus(); }
-        }
-    });
-    scrollThread();
-    if (window.LockTransVoice) LockTransVoice.initChatMic();
-})();
-</script>
+<script src="{% static 'js/chat.js' %}"></script>
 {% endblock %}
