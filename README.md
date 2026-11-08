@@ -375,7 +375,7 @@ Hold the chat mic (web) or send a WhatsApp voice note → `voice/transcriber.py`
 
 ## Deployment (Render + Neon style)
 
-1. Set `DJANGO_DEBUG=False`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DATABASE_URL`, `CSRF_TRUSTED_ORIGINS`, PayPal/Termii/Model/WhatsApp keys, SMTP. The app refuses to boot without `PAYPAL_CLIENT_ID`, with default hosts, missing `EMAIL_HOST`, or `DEMO_MODE` on.
+1. Set `DJANGO_DEBUG=False`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DATABASE_URL`, `CSRF_TRUSTED_ORIGINS`, PayPal/Termii/Model/WhatsApp keys, SMTP. The app refuses to boot without `PAYPAL_CLIENT_ID`, with default hosts, or with `DEMO_MODE` on. `EMAIL_HOST` is optional: without SMTP, invitation links print to the server log instead of emailing.
 2. Build: `pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate`
 3. Start: `gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --timeout 90` (timeout must cover the slowest chat turn plus voice transcription)
 4. Scheduler, not a persistent worker: run `python manage.py auto_release_escrow` from cron/beat on a schedule (the `Procfile` worker entry documents the one-shot command; a long-lived dyno running it would just exit)

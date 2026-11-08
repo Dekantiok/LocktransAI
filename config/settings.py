@@ -208,10 +208,14 @@ EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
 if not DEBUG and EMAIL_BACKEND.endswith('smtp.EmailBackend') and not EMAIL_HOST:
-    raise RuntimeError(
-        "EMAIL_HOST must be set when DJANGO_DEBUG is off: invitation "
-        "emails are required for counterparty onboarding."
+    # No SMTP configured: invitations print to the log instead of crashing
+    # the boot. Judges share the on-screen escrow code manually; set
+    # EMAIL_HOST (+ credentials) for real email delivery.
+    import logging as _logging
+    _logging.getLogger(__name__).warning(
+        "EMAIL_HOST unset: counterparty invitations will log instead of sending."
     )
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = os.environ.get(
     'DEFAULT_FROM_EMAIL', 'Locktrans.AI <no-reply@locktrans.example>')
 
