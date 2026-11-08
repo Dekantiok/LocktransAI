@@ -117,28 +117,25 @@ Notes:
 - `INFERENCE_*` points the AI chat at any OpenAI-compatible endpoint. Without them the site still loads and the manual forms still work, but the assistant replies that it is temporarily unavailable.
 - `MODEL_API_KEY` powers voice notes only. Without it, typing works everywhere and voice asks you to type instead.
 - WhatsApp is optional for local judging. It needs a Meta WhatsApp app plus a public HTTPS tunnel (see Deployment). Skip it locally unless you are specifically scoring WhatsApp.
-- Seller payouts go to a PayPal email saved on the vault; no bank resolution is needed. With `DEMO_SIMULATE_PAYMENTS=True` (default) PayPal is skipped entirely; set it to `False` plus sandbox `PAYPAL_*` keys and the same Demo flow runs against real PayPal sandbox (approve with a sandbox buyer account, payouts land in sandbox).
+- Seller payouts go to a PayPal email saved on the vault; no bank resolution is needed. Judging always runs against real PayPal sandbox (approve with a sandbox buyer account, payouts land in sandbox). `DEMO_SIMULATE_PAYMENTS=True` exists only for keyless local development — never for judging.
 
 ### What is simulated, and what is not
 
-| Simulated in Demo mode | Still fully real |
+In Demo mode only OTP email *delivery* is stubbed. Money always moves for real:
+
+| Demo mode | Still fully real |
 | --- | --- |
 | OTP email delivery. Use code `123456` anywhere a verification code is asked. Wrong codes still fail. | OTP verification logic, attempt limits, expiry, and identity binding |
-| Funding. The payment link opens an internal simulated checkout page; one click runs the same backend confirmation a verified webhook would. | Amount and currency checks, funding state change, seller notification |
-| Seller payout. Release returns a fake successful transfer such as `DEMO-TRF-...` and writes a real payout record. | Vault requirement, inspection rules, dispute freeze, release confirmation |
-| Nothing else | AI tools and confirmations, join and resume, dispatch and receipt, payout email saving, disputes, dashboard, admin |
+| Nothing else. Funding goes through real PayPal sandbox checkout; payouts are real PayPal sandbox transfers. | Amount and currency checks, funding state change, seller notification, vault requirement, inspection rules, dispute freeze, release confirmation, real payout records |
+| AI tools and confirmations, join and resume, dispatch and receipt, payout email saving, disputes, dashboard, admin | (all real) |
 
 ### Judge script (about 5 minutes, two people or two browsers)
 
 Use two separate browser sessions, because each party needs its own identity. Easiest: Browser A normal window for Person 1, Browser B private/incognito window for Person 2. Refreshing a chat starts it fresh on purpose. To resume, say "continue" plus the escrow code and verify again.
 
-**Hosted demo (real PayPal sandbox).** Use your real email addresses for identity — nothing is emailed, the universal code is `123456` everywhere. For money movement you need PayPal *sandbox* accounts (live logins don't work on sandbox checkout):
+Use your real email addresses for identity — nothing is emailed, the universal code is `123456` everywhere. For money movement you need PayPal *sandbox* accounts (live logins don't work on sandbox checkout):
 - Person 1 (buyer) approves payment logged in as a sandbox buyer account.
 - Person 2 (seller) saves a sandbox PayPal email on the vault so the released payout lands somewhere visible.
-
-Then follow the same 11 steps below, except at step 7 a real PayPal sandbox checkout opens (log in with the sandbox buyer, approve, you'll return automatically), and at step 10 give the sandbox seller email.
-
-**Local demo (fully simulated, no PayPal account needed).** Leave `DEMO_SIMULATE_PAYMENTS=True`: step 7 opens an internal simulated checkout page instead of PayPal — one click confirms funding.
 
 **Person 1 (buyer), Browser A, home page chat:**
 
@@ -154,7 +151,7 @@ Then follow the same 11 steps below, except at step 7 a real PayPal sandbox chec
 
 **Person 1 (buyer):**
 
-7. Say: "fund LKTRaB3xK", then reply "yes" when asked. Open the payment link and click **Confirm simulated payment**. (Simulated mode only — on the hosted demo a real PayPal sandbox checkout opens instead.)
+7. Say: "fund LKTRaB3xK", then reply "yes" when asked. A real PayPal sandbox checkout opens — log in with the sandbox buyer account, approve, and you'll return automatically.
 
 **Person 2 (seller):**
 
@@ -166,7 +163,7 @@ Then follow the same 11 steps below, except at step 7 a real PayPal sandbox chec
 
 **Person 2 (seller):**
 
-10. Say: "My PayPal email is seller@example.com", then confirm with "yes". The assistant confirms the payout email is saved and masked for the buyer. Check it matches the email you expect.
+10. Say: "My PayPal email is <your-sandbox-seller-email>", then confirm with "yes". The assistant confirms the payout email is saved and masked for the buyer. Check it matches the email you expect.
 
 **Person 1 (buyer):**
 
