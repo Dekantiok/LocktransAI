@@ -51,8 +51,8 @@ You need Python 3.13 or newer (the project runtime is Python 3.14), Git, and an 
 
 ```bash
 # 1. Clone + venv
-git clone https://github.com/Dekantiok/locktrans-v1.git
-cd locktrans-v1
+git clone https://github.com/Dekantiok/LocktransAI.git
+cd LocktransAI
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
