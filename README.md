@@ -132,6 +132,14 @@ Notes:
 
 Use two separate browser sessions, because each party needs its own identity. Easiest: Browser A normal window for Person 1, Browser B private/incognito window for Person 2. Refreshing a chat starts it fresh on purpose. To resume, say "continue" plus the escrow code and verify again.
 
+**Hosted demo (real PayPal sandbox).** Use your real email addresses for identity — nothing is emailed, the universal code is `123456` everywhere. For money movement you need PayPal *sandbox* accounts (live logins don't work on sandbox checkout):
+- Person 1 (buyer) approves payment logged in as a sandbox buyer account.
+- Person 2 (seller) saves a sandbox PayPal email on the vault so the released payout lands somewhere visible.
+
+Then follow the same 11 steps below, except at step 7 a real PayPal sandbox checkout opens (log in with the sandbox buyer, approve, you'll return automatically), and at step 10 give the sandbox seller email.
+
+**Local demo (fully simulated, no PayPal account needed).** Leave `DEMO_SIMULATE_PAYMENTS=True`: step 7 opens an internal simulated checkout page instead of PayPal — one click confirms funding.
+
 **Person 1 (buyer), Browser A, home page chat:**
 
 1. Type or hold the mic and say: "I want to buy a laptop for 500 dollars from seller@example.com. My email is buyer@example.com, I am the buyer."
@@ -146,7 +154,7 @@ Use two separate browser sessions, because each party needs its own identity. Ea
 
 **Person 1 (buyer):**
 
-7. Say: "fund LKTRaB3xK", then reply "yes" when asked. Open the payment link and click **Confirm simulated payment**. Do not expect a real PayPal page in Demo mode.
+7. Say: "fund LKTRaB3xK", then reply "yes" when asked. Open the payment link and click **Confirm simulated payment**. (Simulated mode only — on the hosted demo a real PayPal sandbox checkout opens instead.)
 
 **Person 2 (seller):**
 
