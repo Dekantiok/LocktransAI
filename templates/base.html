@@ -268,7 +268,7 @@
     <main class="container py-3 py-md-4">
         {% if DEMO_MODE %}
         <div class="alert alert-info border-0 small" role="alert">
-            <strong>Demo mode:</strong> use code <span class="mono-text">{{ DEMO_OTP_CODE }}</span> wherever an email verification code is asked. Payments are simulated, no real money moves.
+            <strong>Demo mode:</strong> use code <span class="mono-text">{{ DEMO_OTP_CODE }}</span> wherever an email verification code is asked.{% if DEMO_SIMULATE_PAYMENTS %} Payments are simulated, no real money moves.{% else %} Payments use the PayPal sandbox — use sandbox credentials to test.{% endif %}
         </div>
         {% endif %}
         {% if messages %}
