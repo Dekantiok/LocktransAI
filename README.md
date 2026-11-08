@@ -133,7 +133,7 @@ In Demo mode only OTP email *delivery* is stubbed. Money always moves for real:
 
 Use two separate browser sessions, because each party needs its own identity. Easiest: Browser A normal window for Person 1, Browser B private/incognito window for Person 2. Refreshing a chat starts it fresh on purpose. To resume, say "continue" plus the escrow code and verify again.
 
-Use your real email addresses for identity — nothing is emailed, the universal code is `123456` everywhere. For money movement, bring your own PayPal *sandbox* accounts (live logins don't work on sandbox checkout) — free at [developer.paypal.com](https://developer.paypal.com) (sign up, and test buyer + seller accounts are auto-provisioned under Testing Tools → Sandbox Accounts):
+Use your real email addresses for identity — nothing is emailed, the universal code is `123456` everywhere. Tip: your sandbox emails (e.g. `sb-xyz@business.example.com`) work as identities too, since delivery is stubbed — then each role needs only one address for both verification and money. For money movement, bring your own PayPal *sandbox* accounts (live logins don't work on sandbox checkout) — free at [developer.paypal.com](https://developer.paypal.com) (sign up, and test buyer + seller accounts are auto-provisioned under Testing Tools → Sandbox Accounts):
 - Person 1 (buyer) approves payment logged in as their own sandbox buyer account.
 - Person 2 (seller) saves their own sandbox PayPal email on the vault, then logs into that sandbox account to see the released payout land.
 
