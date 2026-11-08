@@ -223,7 +223,7 @@ DEFAULT_FROM_EMAIL = os.environ.get(
 # DEMO_OTP_CODE is accepted instead) and payments run through a simulated
 # gateway. AI, escrow logic, and everything else stay fully real.
 DEMO_MODE = os.environ.get('DEMO_MODE', 'False') == 'True'
-DEMO_OTP_CODE = os.environ.get('DEMO_OTP_CODE', '123456')
+DEMO_OTP_CODE = os.environ.get('DEMO_OTP_CODE', '123456') or '123456'
 DEMO_ALLOW_PROD = os.environ.get('DEMO_ALLOW_PROD', 'False') == 'True'
 # Simulated vs real payments inside Demo mode. True (default) routes
 # funding/payouts through the internal simulated checkout: no PayPal keys
