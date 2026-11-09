@@ -131,7 +131,21 @@
   }
 
   /* Sent message appears instantly, typing dots below it, input cleared
-     for the follow-up, the server swap then replaces the whole thread. */
+     for the follow-up, the server swap then replaces the whole thread.
+     The dots stay up until the send itself settles: the 10s live poll
+     is paused mid-flight so it cannot wipe them (and the optimistic
+     bubble) before the answer lands. */
+  function setSending(on) {
+    try {
+      if (on) document.body.dataset.chatSending = '1';
+      else delete document.body.dataset.chatSending;
+    } catch (e) { /* non-DOM context: ignore */ }
+  }
+  function isSending() {
+    try {
+      return document.body.dataset.chatSending === '1';
+    } catch (e) { return false; }
+  }
   function initChatIndicators() {
     if (!window.htmx) return;
     document.body.addEventListener('htmx:beforeRequest', function (event) {
@@ -143,12 +157,13 @@
           appendUserBubble(/^\d{6}$/.test(text) ? '[one-time code withheld]' : text);
           if (input) input.value = '';
         }
+        setSending(true);
         showTyping();
       }
     });
     var hide = function (event) {
       if (event.detail && event.detail.target &&
-          event.detail.target.id === 'chat-result') hideTyping();
+          event.detail.target.id === 'chat-result') { setSending(false); hideTyping(); }
     };
     document.body.addEventListener('htmx:afterSwap', hide);
     document.body.addEventListener('htmx:responseError', hideTyping);
@@ -182,6 +197,7 @@
     }
     function uploadBlob(blob) {
       stop = null;
+      setSending(true);
       appendUserBubble('🎤 Voice note');
       showTyping();
       if (hint) hint.textContent = '';
@@ -200,7 +216,8 @@
         }
         if (hint) hint.textContent = '';
         setIdle();
-      }).then(function () { hideTyping(); }).catch(function () {
+      }).then(function () { setSending(false); hideTyping(); }).catch(function () {
+        setSending(false);
         hideTyping();
         if (hint) hint.textContent = 'Voice failed, please type instead.';
         setIdle();
@@ -265,6 +282,7 @@
     result.dataset.pollAttached = '1';
     setInterval(function () {
       if (document.hidden) return;
+      if (isSending()) return;
       var thread = document.getElementById('chat-thread');
       if (!thread) return;
       var since = thread.getAttribute('data-last-id') || '0';
