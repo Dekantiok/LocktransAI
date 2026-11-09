@@ -1,4 +1,4 @@
-"""Full circle in chat: join after OTP, bank details, release, notify."""
+"""Full circle in chat: join after OTP, payout email, release, notify."""
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -6,7 +6,7 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from agent.loop import get_or_create_conversation
-from agent.registry import CONSEQUENTIAL_TOOLS, execute
+from agent.registry import CONSEQUENTIAL_TOOLS, TOOLS, execute
 from escrow.models import EscrowContract, SettlementVault
 from escrow.services import complete_counterparty_join, issue_otp
 
@@ -48,9 +48,13 @@ class JoinServiceTest(TestCase):
         self.assertIsNone(joined)
 
     def test_join_tool_is_consequential(self):
+        from agent.registry import TOOLS
+        tool_names = [t['function']['name'] for t in TOOLS]
         self.assertIn('request_counterparty_join', CONSEQUENTIAL_TOOLS)
-        self.assertIn('request_seller_bank_details', CONSEQUENTIAL_TOOLS)
-        self.assertNotIn('get_bank_list', CONSEQUENTIAL_TOOLS)
+        self.assertIn('request_seller_payout_email', CONSEQUENTIAL_TOOLS)
+        self.assertIn('request_seller_payout_email', tool_names)
+        self.assertNotIn('get_bank_list', tool_names)
+        self.assertNotIn('request_seller_bank_details', tool_names)
 
     def test_join_tool_executes_for_counterparty(self):
         contract = make_contract(code='LKTRfc002')
@@ -126,7 +130,7 @@ class ChatJoinAfterOtpTest(TestCase):
         self.assertEqual(contract.status, 'awaiting_funding')
 
 
-class BankDetailsTest(TestCase):
+class PayoutEmailTest(TestCase):
     def setUp(self):
         self.contract = make_contract(
             code='LKTRfc020', status='awaiting_dispatch',
@@ -135,7 +139,7 @@ class BankDetailsTest(TestCase):
 
     def test_seller_saves_verified_details(self):
         result = execute(
-            'request_seller_bank_details',
+            'request_seller_payout_email',
             {'escrow_reference': self.contract.code,
              'paypal_email': 'seller@example.com'},
             actor_email='seller@x.com')
@@ -148,28 +152,28 @@ class BankDetailsTest(TestCase):
 
     def test_buyer_cannot_save_seller_details(self):
         result = execute(
-            'request_seller_bank_details',
+            'request_seller_payout_email',
             {'escrow_reference': self.contract.code,
              'paypal_email': 'seller@example.com'},
             actor_email='buyer@x.com')
         self.assertFalse(result['ok'])
         self.assertFalse(SettlementVault.objects.exists())
 
-    def test_unknown_bank_and_bad_number_refused(self):
+    def test_bad_paypal_email_refused(self):
         self.assertFalse(execute(
-            'request_seller_bank_details',
+            'request_seller_payout_email',
             {'escrow_reference': self.contract.code,
              'paypal_email': 'not-an-email'},
             actor_email='seller@x.com')['ok'])
         self.assertFalse(execute(
-            'request_seller_bank_details',
+            'request_seller_payout_email',
             {'escrow_reference': self.contract.code,
              'paypal_email': ''},
             actor_email='seller@x.com')['ok'])
 
-    def test_failed_verification_saves_nothing(self):
+    def test_invalid_email_saves_nothing(self):
         result = execute(
-            'request_seller_bank_details',
+            'request_seller_payout_email',
             {'escrow_reference': self.contract.code,
              'paypal_email': 'bad-email'},
             actor_email='seller@x.com')
@@ -181,7 +185,7 @@ class BankDetailsTest(TestCase):
             contract=self.contract, paypal_email='seller@example.com',
             bank_name='PayPal', account_name='seller@example.com')
         result = execute(
-            'request_seller_bank_details',
+            'request_seller_payout_email',
             {'escrow_reference': self.contract.code,
              'paypal_email': 'other@example.com'},
             actor_email='seller@x.com')
@@ -191,13 +195,14 @@ class BankDetailsTest(TestCase):
             SettlementVault.objects.get(contract=self.contract).paypal_email,
             'seller@example.com')
 
-    def test_bank_list_tool(self):
+    def test_bank_list_tool_removed(self):
+        names = [t['function']['name'] for t in TOOLS]
+        self.assertNotIn('get_bank_list', names)
         result = execute('get_bank_list', {}, actor_email=None)
-        self.assertTrue(result['ok'])
-        self.assertEqual(result['data']['banks'], [])
+        self.assertFalse(result['ok'])
 
 
-class ReleaseBankGateTest(TestCase):
+class ReleasePayoutGateTest(TestCase):
     def test_missing_vault_notifies_seller_and_blocks(self):
         contract = make_contract(
             code='LKTRfc030', status='in_inspection',
@@ -306,7 +311,7 @@ class ResumeEitherPartyTest(TestCase):
         contract.refresh_from_db()
         self.assertEqual(contract.status, 'awaiting_funding')
 
-    def test_receipt_asks_seller_for_bank_details(self):
+    def test_receipt_asks_seller_for_payout_email(self):
         contract = make_contract(
             code='LKTRfc055', status='in_transit',
             creator='seller@x.com', creator_role='seller',
@@ -317,48 +322,46 @@ class ResumeEitherPartyTest(TestCase):
                               'stage': 'receipt'},
                              actor_email='buyer@x.com')
         self.assertTrue(result['ok'], result)
-        self.assertFalse(result['data']['seller_bank_saved'])
+        self.assertFalse(result['data']['seller_payout_saved'])
         events = [c.args[0] for c in mock_notify.call_args_list]
         self.assertIn('receipt_confirmed', events)
         self.assertIn('bank_details_needed', events)
 
-    def test_status_reports_bank_saved_flag(self):
+    def test_status_reports_payout_saved_flag(self):
         contract = make_contract(code='LKTRfc056', status='in_inspection')
         result = execute('get_authorized_escrow_status',
                          {'escrow_reference': contract.code},
                          actor_email='buyer@x.com')
         self.assertTrue(result['ok'])
-        self.assertFalse(result['data']['seller_bank_saved'])
+        self.assertFalse(result['data']['seller_payout_saved'])
         SettlementVault.objects.create(
             contract=contract, paypal_email='seller@example.com',
             bank_name='PayPal', account_name='seller@example.com')
         result = execute('get_authorized_escrow_status',
                          {'escrow_reference': contract.code},
                          actor_email='seller@x.com')
-        self.assertTrue(result['data']['seller_bank_saved'])
+        self.assertTrue(result['data']['seller_payout_saved'])
 
-    def test_next_step_asks_seller_for_bank_in_inspection(self):
+    def test_next_step_asks_seller_for_payout_in_inspection(self):
         from escrow.services import escrow_next_step
         contract = make_contract(code='LKTRfc057', status='in_inspection')
         step = escrow_next_step(contract, 'seller@x.com')
         self.assertIn('paypal', step.lower())
 
-    def test_bank_details_accept_numeric_json_args(self):
-        # account_number is a legacy alias for paypal_email.
+    def test_legacy_bank_args_rejected(self):
+        # The old bank_code/account_number args are gone: a bare number
+        # is not an email, so it must be refused with nothing saved.
         contract = make_contract(
             code='LKTRfc060', status='in_inspection',
             creator='buyer@x.com', creator_role='buyer',
             counterparty='seller@x.com')
         result = execute(
-            'request_seller_bank_details',
+            'request_seller_payout_email',
             {'escrow_reference': contract.code,
-             'account_number': 'seller@example.com'},
+             'account_number': '0123456789'},
             actor_email='seller@x.com')
-        self.assertTrue(result['ok'], result)
-        vault = SettlementVault.objects.get(contract=contract)
-        self.assertEqual(vault.paypal_email, 'seller@example.com')
-        self.assertTrue(vault.bank_name.startswith('PayPal'))
-        self.assertEqual(vault.account_name, 'seller@example.com')
+        self.assertFalse(result['ok'])
+        self.assertFalse(SettlementVault.objects.exists())
 
 class PayPalEmailVerificationTest(TestCase):
     def test_valid_paypal_email_accepted_without_network(self):
@@ -382,7 +385,7 @@ class WebchatPushTest(TestCase):
         convo.save(update_fields=['owner_email'])
         return convo
 
-    def test_bank_needed_lands_in_seller_webchat(self):
+    def test_payout_needed_lands_in_seller_webchat(self):
         from escrow.lifecycle import notify_event
         seller_convo = self._web_convo('seller@x.com')
         contract = make_contract(code='LKTRpush1', status='in_inspection')

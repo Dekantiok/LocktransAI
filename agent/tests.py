@@ -158,10 +158,10 @@ class RegistryTest(TestCase):
                          actor_email='buyer@example.com')
         self.assertFalse(result['ok'])
 
-    def test_bank_tool_one_tap_uses_verified_email(self):
+    def test_payout_tool_one_tap_uses_verified_email(self):
         from agent.registry import execute
         self.contract.transition_to('awaiting_dispatch')
-        result = execute('request_seller_bank_details',
+        result = execute('request_seller_payout_email',
                          {'escrow_reference': 'AGENT001',
                           'use_verified_email': True},
                          actor_email='seller@example.com')
@@ -171,10 +171,10 @@ class RegistryTest(TestCase):
         self.assertEqual(
             SettlementVault.objects.get().paypal_email, 'seller@example.com')
 
-    def test_bank_tool_needs_email_or_verified_flag(self):
+    def test_payout_tool_needs_email_or_verified_flag(self):
         from agent.registry import execute
         self.contract.transition_to('awaiting_dispatch')
-        result = execute('request_seller_bank_details',
+        result = execute('request_seller_payout_email',
                          {'escrow_reference': 'AGENT001'},
                          actor_email='seller@example.com')
         self.assertFalse(result['ok'])
@@ -711,7 +711,7 @@ class ChatViewTest(TestCase):
 
     def test_paypal_save_reply_states_paypal_email(self):
         from agent.loop import _direct_reply
-        reply = _direct_reply('request_seller_bank_details', {
+        reply = _direct_reply('request_seller_payout_email', {
             'ok': True, 'data': {
                 'paypal_email': 'seller@example.com',
                 'masked': 'se***@example.com'}})

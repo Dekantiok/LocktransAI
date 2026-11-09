@@ -123,7 +123,7 @@ else:
 
 CACHES = {
     'default': {
-        # LocMem cache fragments OTP/voice/bank state by design; sessions stay database-backed.
+        # LocMem cache fragments OTP/voice/vault state by design; sessions stay database-backed.
         'BACKEND': os.environ.get(
             'CACHE_BACKEND', 'django.core.cache.backends.locmem.LocMemCache'),
         'LOCATION': os.environ.get('CACHE_LOCATION', 'locktrans'),

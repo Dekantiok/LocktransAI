@@ -114,7 +114,7 @@ class AgentMisuseTest(TestCase):
 
 
 class ToolArgumentRedactionTest(TestCase):
-    def test_bank_details_masked_in_history(self):
+    def test_payout_email_masked_in_history(self):
         from decimal import Decimal
         from agent.loop import get_or_create_conversation, run_turn
         from escrow.models import EscrowContract
@@ -127,14 +127,14 @@ class ToolArgumentRedactionTest(TestCase):
         convo = get_or_create_conversation('web', 'sess-redact')
         convo.owner_email = 'seller@x.com'
         convo.save(update_fields=['owner_email'])
-        call = {'id': 'b1', 'name': 'request_seller_bank_details',
+        call = {'id': 'b1', 'name': 'request_seller_payout_email',
                 'arguments': {'escrow_reference': 'LKTRred1',
                               'paypal_email': 'seller@example.com'}}
         with patch('agent.loop.chat',
                     return_value={'text': '', 'tool_calls': [call],
                                   'usage': {}}):
             run_turn(convo, 'here is my PayPal email', session_key='sess-redact')
-        row = convo.messages.filter(role='assistant', tool_name='request_seller_bank_details').order_by('-id').first()
+        row = convo.messages.filter(role='assistant', tool_name='request_seller_payout_email').order_by('-id').first()
         self.assertIsNotNone(row)
         self.assertEqual(row.tool_arguments.get('paypal_email'), '[withheld]')
         self.assertNotIn('seller@example.com', json.dumps(row.tool_arguments))

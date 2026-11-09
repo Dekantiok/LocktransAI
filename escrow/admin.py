@@ -168,7 +168,7 @@ class SettlementVaultAdmin(admin.ModelAdmin):
     list_display = ('contract', 'paypal_email', 'masked_account')
     search_fields = ('contract__code', 'paypal_email')
 
-    @admin.display(description='Account number')
+    @admin.display(description='Payout email (masked)')
     def masked_account(self, obj):
         return obj.masked_account_number
 

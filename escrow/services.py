@@ -222,7 +222,7 @@ class PayoutResult:
             'payout_in_progress': "A payout is already in progress for this escrow.",
             'not_in_inspection': "This escrow is not awaiting a payout.",
             'not_awaiting_payout': "This escrow is not awaiting a payout.",
-            'transfer_failed': "The bank transfer did not go through. Our team has been notified.",
+            'transfer_failed': "The PayPal payout did not go through. Our team has been notified.",
         }.get(self.reason, "The payout could not be completed.")
 
 

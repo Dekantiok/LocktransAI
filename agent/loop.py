@@ -56,18 +56,18 @@ missing thing per message, most important first.
   SHIP/RECEIVE: seller says shipped -> confirm dispatch; buyer says \
   received -> confirm receipt (inspection starts). Each step updates \
   the server and notifies the other party automatically.
-  BANK: before release the seller must have payout details saved. \
+  PAYOUT: before release the seller must have a payout email saved. \
   The moment receipt is confirmed, ask the SELLER for their PayPal email \
-  if seller_bank_saved is false, and whenever a seller checks an \
+  if seller_payout_saved is false, and whenever a seller checks an \
   escrow in dispatch/transit/inspection without saved details, \
   ask then too. Do not wait until release is attempted. \
   Offer one tap first: ask "Should I send it to your verified email \
-  (their address)?" and call request_seller_bank_details with \
+  (their address)?" and call request_seller_payout_email with \
   use_verified_email true when they agree; only ask them to type a \
   different paypal_email when they decline. Payouts go via PayPal. \
   After saving, confirm the masked email back to the seller. \
   RELEASE: buyer confirms in inspection -> request_release_approval. \
-  If bank details are missing the seller is notified automatically; \
+  If the payout email is missing the seller is notified automatically; \
   say so and wait. After release, confirm payout to both parties.
 - When asked for status or "what's next", check \
 list_my_escrows first when they ask what is new or what needs them, then get_authorized_escrow_status for the one they pick, never answer from memory.
@@ -348,16 +348,16 @@ def _direct_reply(name, outcome):
             note = ("Receipt confirmed, the inspection window has "
                     "started. Say \"release\" when you're happy, or "
                     "\"dispute\" if something is wrong.")
-            if data.get('seller_bank_saved') is False:
-                note += (" The seller has been asked for their payout "
-                         "bank details, which are needed before release.")
+            if data.get('seller_payout_saved') is False:
+                note += (" The seller has been asked for their PayPal payout "
+                         "email, which is needed before release.")
             return note
         return ("Marked as dispatched, the buyer has been notified. "
                 "I'll update you when they confirm receipt.")
     if name == 'request_release_approval':
         return (f"Funds released, the seller has been paid. "
                 f"Escrow {data.get('reference')} is complete.")
-    if name == 'request_seller_bank_details':
+    if name in ('request_seller_payout_email', 'request_seller_bank_details'):
         if data.get('already_saved'):
             return (f"Payout email already saved: {data.get('paypal_email')} "
                     f"({data.get('masked')}).")
@@ -421,6 +421,7 @@ def confirmed(conversation, name, arguments):
 SENSITIVE_ARG_KEYS = {'paypal_email', 'account_number', 'bank_code', 'code', 'otp', 'password'}
 
 SENSITIVE_TOOL_ARGS = {
+    'request_seller_payout_email': {'paypal_email'},
     'request_seller_bank_details': {'paypal_email', 'account_number'},
     'create_escrow_draft': set(),
     'update_escrow_draft': set(),

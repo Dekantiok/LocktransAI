@@ -29,7 +29,7 @@ Money rules: amounts stored as decimals, charged in cents; tiered USD service fe
 
 ## Interfaces
 
-- **Manual web**, `/create/`, `/join/`, `/escrow/<code>/` detail with HTMX live panel (15s poll), My Escrow lookup by email+OTP, seller bank vault (account numbers masked until funding).
+- **Manual web**, `/create/`, `/join/`, `/escrow/<code>/` detail with HTMX live panel (15s poll), My Escrow lookup by email+OTP, seller PayPal vault (email masked until funding).
 - **Website AI assistant**, `/assistant/` chat (also embedded on `/`). Text, mic button (MediaRecorder → Muse transcription → normal agent turn), pending-action panel ("reply yes or discard"), New chat button, typed `discard` to drop a proposal. Bare 6-digit messages are treated as OTPs, never sent to the model.
 - **WhatsApp AI assistant**, `/webhooks/whatsapp/` Cloud API webhook. Text and voice notes flow into the same bounded agent loop; email OTP verification binds the sender number to a verified identity (the number itself is never identity). Non-text messages get a gentle nudge back to text/voice.
 
@@ -225,7 +225,7 @@ hi
 
 The bot asks for your email address. Reply with an email you control, then reply with the OTP code. In Demo mode (`DEMO_MODE=True`) the code is `123456`, same as the website, and the troubleshooting table below applies.
 
-**6. Run the same circle as the web judge script.** Everything from the website script works here: describe the deal, confirm, paste the code, share the LKTR code with the other party, join from the second party's own chat, fund via the payment link, dispatch, confirm receipt, add payout bank details, and release. Voice notes work too: hold the mic in WhatsApp and speak instead of typing. Differences from the web channel to expect:
+**6. Run the same circle as the web judge script.** Everything from the website script works here: describe the deal, confirm, paste the code, share the LKTR code with the other party, join from the second party's own chat, fund via the payment link, dispatch, confirm receipt, add the payout PayPal email, and release. Voice notes work too: hold the mic in WhatsApp and speak instead of typing. Differences from the web channel to expect:
 
 - Replies arrive as WhatsApp messages, and lifecycle nudges (counterparty joined, funded, shipped, payout) arrive unprompted.
 - There is no page to refresh: the conversation persists in WhatsApp, so verification and proposals carry over between sessions.
@@ -351,9 +351,9 @@ Design tokens, components, and responsive rules live in `templates/base.html` (n
 
 ## The AI agent
 
-Bounded tool-using loop (`agent/loop.py`): user message → model → approved tool call → backend result → reply. 18 tools (`agent/registry.py`), all authenticated against the session-verified email and the escrow state machine, model arguments are untrusted input.
+Bounded tool-using loop (`agent/loop.py`): user message → model → approved tool call → backend result → reply. A fixed registry of tools (`agent/registry.py`), all authenticated against the session-verified email and the escrow state machine, model arguments are untrusted input.
 
-- Consequential tools (create, invite, join, pay, dispatch/receipt, bank details, release, dispute) need exact fresh confirmation. A clear "yes" executes the backend-stored proposal directly, so users are never asked to confirm twice.
+- Consequential tools (create, invite, join, pay, dispatch/receipt, payout email, release, dispute) need exact fresh confirmation. A clear "yes" executes the backend-stored proposal directly, so users are never asked to confirm twice.
 - OTPs are consumed by the backend, never the model; codes are redacted from model context.
 - Model outages degrade to the manual forms; nothing is ever claimed from conversation alone.
 
@@ -396,7 +396,7 @@ Hold the chat mic (web) or send a WhatsApp voice note → `voice/transcriber.py`
 - Webhook signatures validated (PayPal + WhatsApp); duplicate events ignored via unique constraints.
 - Amount + currency verified on every funding confirmation; payouts are claimed once, parked `uncertain` on timeouts (never blind-retried), and only a `transfer.success` webhook completes an escrow — failed or reversed transfers stay in `pending_payout` for reconciliation with both parties notified.
 - Post-funding cancellation initiates an explicit provider refund (`initiate_refund`) tracked to `initiated` or `failed`; a cancelled escrow counts as refunded only after the provider confirms.
-- Agent cannot resolve disputes or bypass auth; payout release needs buyer confirmation plus verified seller bank details, and every consequential call is confirmation-gated, with prompt-injection and tool-spoofing covered by tests.
+- Agent cannot resolve disputes or bypass auth; payout release needs buyer confirmation plus a verified seller PayPal email, and every consequential call is confirmation-gated, with prompt-injection and tool-spoofing covered by tests.
 - Keep `LOG_OTP_TO_CONSOLE=False` outside local dev.
 
 <!-- docs: Locktrans.AI setup verified -->

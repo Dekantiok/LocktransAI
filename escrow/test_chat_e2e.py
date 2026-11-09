@@ -172,11 +172,11 @@ class ChatE2ETest(TestCase):
         contract.refresh_from_db()
         self.assertEqual(contract.status, 'in_inspection')
 
-        self.confirm_tool(seller, 'request_seller_bank_details', {
+        self.confirm_tool(seller, 'request_seller_payout_email', {
             'escrow_reference': contract.code,
-            'paypal_email': 'seller@example.com'}, 'bank')
+            'paypal_email': 'seller@example.com'}, 'payout')
         outcome = self.tool_outcome(
-            self.convo_of(seller), 'request_seller_bank_details')
+            self.convo_of(seller), 'request_seller_payout_email')
         self.assertTrue(outcome['ok'], outcome)
         vault = SettlementVault.objects.get(contract=contract)
         self.assertEqual(vault.paypal_email, 'seller@example.com')

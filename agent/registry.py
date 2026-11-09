@@ -1,4 +1,4 @@
-"""The agent's only door into the platform: 18 approved tools.
+"""The agent's only door into the platform: an explicit registry of approved tools.
 The actor comes from the server-side session, never model arguments; model input is untrusted.
 """
 import logging
@@ -33,7 +33,7 @@ CONSEQUENTIAL_TOOLS = {
     'request_payment_link',
     'request_delivery_confirmation',
     'request_release_approval',
-    'request_seller_bank_details',
+    'request_seller_payout_email',
     'request_dispute_submission',
 }
 
@@ -194,7 +194,7 @@ def tool_get_authorized_escrow_status(actor, **kwargs):
             contract.seller_confirmed if actor == contract.buyer_email
             else contract.buyer_confirmed
         ),
-        'seller_bank_saved': SettlementVault.objects.filter(
+        'seller_payout_saved': SettlementVault.objects.filter(
             contract=contract).exists(),
         'inspection_ends': (
             contract.inspection_ends.isoformat()
@@ -393,13 +393,13 @@ def tool_request_delivery_confirmation(actor, **kwargs):
     audit(f'delivery.{stage}_confirmed', actor=actor, escrow=contract)
     notify_event('dispatch_confirmed' if stage == 'dispatch' else 'receipt_confirmed',
                  contract, actor=actor)
-    bank_saved = SettlementVault.objects.filter(contract=contract).exists()
-    if stage == 'receipt' and not bank_saved:
+    payout_saved = SettlementVault.objects.filter(contract=contract).exists()
+    if stage == 'receipt' and not payout_saved:
         # Ask for payout details at receipt, before release is attempted.
         notify_event('bank_details_needed', contract, actor=actor)
     return {'ok': True, 'data': {
         'reference': contract.code, 'status': contract.status,
-        'seller_bank_saved': bank_saved,
+        'seller_payout_saved': payout_saved,
     }}
 
 
@@ -503,16 +503,7 @@ def tool_request_counterparty_join(actor, **kwargs):
     }}
 
 
-def tool_get_bank_list(actor, **kwargs):
-    del actor, kwargs
-    # Legacy tool kept for backward compat; payouts now go to PayPal email.
-    return {'ok': True, 'data': {
-        'banks': [],
-        'note': 'Bank payouts are retired. Ask the seller for their PayPal email instead.',
-    }}
-
-
-def tool_request_seller_bank_details(actor, **kwargs):
+def tool_request_seller_payout_email(actor, **kwargs):
     actor = _require_actor(actor)
     contract = _get_participant_contract(kwargs.get('escrow_reference'), actor)
     if actor != contract.seller_email:
@@ -530,7 +521,7 @@ def tool_request_seller_bank_details(actor, **kwargs):
             'masked': existing.masked_account_number,
             'note': 'Payout email already saved; contact support to change it.',
         }}
-    paypal_email = normalize_email(str(kwargs.get('paypal_email') or kwargs.get('account_number') or ''))
+    paypal_email = normalize_email(str(kwargs.get('paypal_email') or ''))
     use_verified = str(kwargs.get('use_verified_email') or '').strip().lower() in ('true', '1', 'yes')
     if not paypal_email and use_verified:
         # OTP-verified inbox needs no extra address and cannot be spoofed.
@@ -543,7 +534,7 @@ def tool_request_seller_bank_details(actor, **kwargs):
         bank_name='PayPal',
         account_name=paypal_email[:150],
     )
-    audit('bank_details.saved', actor=actor, escrow=contract,
+    audit('payout_email.saved', actor=actor, escrow=contract,
           metadata={'paypal_email': paypal_email})
     return {'ok': True, 'data': {
         'reference': contract.code,
@@ -588,8 +579,9 @@ HANDLERS = {
     'request_release_approval': tool_request_release_approval,
     'request_verification_code': tool_request_verification_code,
     'request_counterparty_join': tool_request_counterparty_join,
-    'get_bank_list': tool_get_bank_list,
-    'request_seller_bank_details': tool_request_seller_bank_details,
+    'request_seller_payout_email': tool_request_seller_payout_email,
+    # Legacy name: in-flight proposals created before the rename still resolve.
+    'request_seller_bank_details': tool_request_seller_payout_email,
     'request_dispute_submission': tool_request_dispute_submission,
 }
 
@@ -723,11 +715,7 @@ TOOLS = [
             'the user explicitly confirmed joining on the shown terms.',
             {'escrow_reference': _str('The escrow code.')},
             ['escrow_reference']),
-    _schema('get_bank_list',
-            'Legacy payout-bank list (retired). Payouts now go to a PayPal '
-            'email; do not ask for bank details.',
-            {}, []),
-    _schema('request_seller_bank_details',
+    _schema('request_seller_payout_email',
             'Save the seller’s PayPal payout email for an escrow. Only the '
             'verified seller, only after explicit confirmation. Prefer '
             'use_verified_email (pays their OTP-verified inbox, no typing); '
