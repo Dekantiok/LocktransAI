@@ -1,9 +1,5 @@
 """Model inference over any OpenAI-compatible endpoint.
-
-The chat model is just an HTTP API: point INFERENCE_BASE_URL at any
-OpenAI-compatible server (Modal shared endpoint, self-hosted vLLM,
-any other provider) and the agent loop works unchanged. Adding a new
-AI server means setting three env vars — no code changes.
+Point INFERENCE_BASE_URL at any OpenAI-compatible server; swapping providers needs no code changes.
 """
 import json
 import logging
@@ -14,15 +10,15 @@ logger = logging.getLogger(__name__)
 
 
 class InferenceError(Exception):
-    """Base class for chat-model integration failures."""
+    pass
 
 
 class InferenceConfigError(InferenceError):
-    """Missing credentials or model configuration."""
+    pass
 
 
 class InferenceAPIError(InferenceError):
-    """The request failed, timed out, or returned something unusable."""
+    pass
 
 
 def build_client():
@@ -43,19 +39,7 @@ def build_client():
 
 
 def chat(messages, tools=None, timeout=None, affinity_key=None):
-    """One inference round.
-
-    Returns ``{'text': str, 'tool_calls': [...], 'usage': {...}}`` where each
-    tool call is ``{'id': ..., 'name': ..., 'arguments': {...}}``.
-    ``affinity_key`` (e.g. a conversation id) is forwarded as
-    ``Modal-Routing-Affinity-Key`` so multi-turn agent loops keep landing
-    on the same warm container; other providers ignore the header.
-    ``max_tokens`` comes from settings: reasoning models spend the budget
-    on chain-of-thought first, and too small a budget returns empty
-    content with ``finish_reason == 'length'``.
-    Raises InferenceError on any failure; the agent loop decides
-    whether the task can continue without the model.
-    """
+    """One inference round (text/tool_calls/usage); affinity_key pins turns to one warm container. Raises InferenceError."""
     from openai import (
         APIConnectionError,
         APIStatusError,

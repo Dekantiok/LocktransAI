@@ -1,9 +1,4 @@
-"""Lifecycle notifications: tell each party what just happened.
-
-Hooks sit beside the state transitions in views, services, and agent
-tools. Best-effort WhatsApp push to the verified sender; anything
-unconfigured or failing degrades silently and never breaks the money move.
-"""
+"""Best-effort WhatsApp/webchat notifications for escrow events; never breaks money moves."""
 import logging
 
 logger = logging.getLogger(__name__)
@@ -69,12 +64,7 @@ def whatsapp_numbers_for(email):
 
 
 def _append_web_message(email, text):
-    """Drop the update into the recipient's latest webchat, if any.
-
-    Open chat pages poll and swap it in live; it also greets them if
-    they return before any refresh. The actor's own chat is skipped by
-    the caller, they already saw the result of their action.
-    """
+    """Drop the update into the recipient's latest webchat, if any. Skips the actor's own chat."""
     from agent.models import AIConversation
     conversation = (AIConversation.objects
                     .filter(channel='web', owner_email=email)

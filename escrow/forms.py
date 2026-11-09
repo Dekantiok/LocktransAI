@@ -92,9 +92,7 @@ class ContractCreationForm(forms.ModelForm):
 
 
 class SettlementVaultForm(forms.ModelForm):
-    # PayPal Payouts destination. The seller verified their inbox via OTP,
-    # so the verified escrow email is the safest default: one tap, no
-    # spoofable typed address. A different PayPal email is allowed too.
+    # PayPal Payouts destination; default to the verified inbox to avoid a spoofable typed address.
     DESTINATION_CHOICES = (
         ('verified', 'Send to my verified email'),
         ('other', 'Use a different PayPal email'),

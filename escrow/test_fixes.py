@@ -58,7 +58,6 @@ class SettleClaimTest(TestCase):
         self.assertEqual(
             PayoutRecord.objects.get(escrow=self.contract).status, 'initiated')
 
-        # A second settle must never send a second transfer.
         again = settle_pending_payout(self.contract)
         self.assertFalse(again.success)
         self.assertEqual(again.reason, 'payout_in_progress')
@@ -111,8 +110,7 @@ class RefundTest(TestCase):
 
 class FeeValidationTest(TestCase):
     def test_seller_cannot_pay_fee_larger_than_amount(self):
-        # USD tiers start at $1.50, MIN_ESCROW_AMOUNT is $5, so no valid
-        # amount fails the seller-fee check. Below-minimum amounts still fail.
+        # No valid amount fails the seller-fee check; below-minimum still fails.
         form = ContractCreationForm({
             'title': 'T', 'description': 'D', 'amount': '1',
             'fee_payer': 'seller', 'creator_email': 'a@x.com',
@@ -182,8 +180,7 @@ class OtpRaceTest(TestCase):
         with patch('escrow.services.send_otp_via_termii', return_value=True) as mock_send:
             issue_otp('race3@x.com', 'reauth')
             real_code = mock_send.call_args[0][1]
-        # Two sessions verify the same code "at once": first wins,
-        # second finds nothing live rather than reusing the code.
+        # Two sessions race the same code; first wins, second finds nothing live.
         self.assertTrue(consume_otp('race3@x.com', real_code, 'reauth').ok)
         retry = consume_otp('race3@x.com', real_code, 'reauth')
         self.assertFalse(retry.ok)

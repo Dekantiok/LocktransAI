@@ -1,9 +1,4 @@
-"""Cross-interface consistency (spec sections 9, 15.6).
-
-The web form, website AI assistant, and WhatsApp AI assistant must produce
-consistent records through the same validation, authorization, and
-financial rules, never separate versions of the business logic.
-"""
+"""Cross-interface consistency: web form, web AI and WhatsApp AI share one validation/authorization path."""
 import inspect
 from decimal import Decimal
 from unittest.mock import patch
@@ -37,9 +32,7 @@ class CrossInterfaceTest(TestCase):
         from agent import registry
         from whatsapp import flow
         from agent import views as agent_views
-        # The tool validates and parks on email proof; both resume paths
-        # (web chat, WhatsApp) create through the same shared function and
-        # advance to awaiting_counterparty so the counterparty can join.
+        # Tool parks on email proof; both resume paths share one creation function.
         tool_src = inspect.getsource(registry.tool_request_escrow_creation)
         self.assertIn('verification_required', tool_src)
         self.assertNotIn('create_escrow_from_validated', tool_src)
@@ -54,7 +47,6 @@ class CrossInterfaceTest(TestCase):
         contract = create_escrow_from_validated(form.cleaned_data)
         self.assertEqual(contract.service_fee, Decimal('10.00'))
         self.assertEqual(contract.status, 'pending_verification')
-        # Both participants see it; strangers do not.
         self.assertTrue(contracts_for_email('buyer@x.com').filter(code=contract.code).exists())
         self.assertTrue(contracts_for_email('seller@x.com').filter(code=contract.code).exists())
         self.assertFalse(contracts_for_email('stranger@x.com').filter(code=contract.code).exists())

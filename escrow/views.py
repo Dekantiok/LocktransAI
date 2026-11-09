@@ -60,7 +60,6 @@ STATUS_BADGES = {
     'cancelled': 'bg-secondary',
 }
 
-# Human-readable summary of where an escrow sits in the lifecycle.
 STATUS_STAGE = {
     'pending_verification': 1,
     'awaiting_counterparty': 2,
@@ -86,15 +85,7 @@ def dollars(value):
 
 
 def get_contract_verified_email(request, contract):
-    """Email this device verified for THIS contract, or ''.
-
-    Buyer and seller are different people on different devices, so
-    verification is scoped per escrow code: this browser holds at most
-    one role per contract. The old global ``verified_emails`` list is
-    only consulted as a one-party legacy fallback; a legacy session
-    holding both parties is treated as unverified to force a fresh,
-    single-role verify.
-    """
+    """Email verified for THIS contract, or ''. One browser holds one role; legacy list is one-party fallback only."""
     code = contract.code
     scoped = request.session.get('verified_contracts', {})
     email = normalize_email(scoped.get(code, ''))
@@ -144,7 +135,6 @@ def home_view(request):
     conversation = get_or_create_conversation(
         'web', f"session:{request.session.session_key}"
     )
-    # Landing on the home page also restarts the chat from zero.
     request.session.pop('chat_verified_email', None)
     request.session.pop('chat_pending_email', None)
     pending = restart_thread(conversation)
@@ -202,15 +192,7 @@ def create_contract(request):
 
 
 def _verify_and_advance(request, contract, intent, next_status, email):
-    """
-    Shared body for the two OTP verification views.
-
-    One device holds one role per contract: if this browser already
-    verified as the OTHER party for this escrow, refuse before burning
-    an OTP attempt. Returns (redirect_response, error_message).
-    consume_otp is called exactly once per submission so an attempt is
-    only ever counted once.
-    """
+    """Shared OTP body for both verify views. Refuses a second role on this device; counts one attempt per submission."""
     email = normalize_email(email)
     existing = get_contract_verified_email(request, contract)
     if existing and existing != email:
@@ -221,9 +203,7 @@ def _verify_and_advance(request, contract, intent, next_status, email):
     result = consume_otp(email, request.POST.get('otp'), intent)
     if not result.ok:
         return None, result.message
-    # The inbox was just proven by OTP: record which side verified. The
-    # status tool and dashboard read these flags, without them a joined
-    # counterparty still looks "unverified".
+    # Record which side verified; the status tool reads these flags.
     confirmed_fields = {}
     if email == contract.buyer_email:
         confirmed_fields['buyer_confirmed'] = True
@@ -337,8 +317,7 @@ def contract_detail(request, code):
         'show_buyer_completed': (contract.status == 'completed' and is_buyer),
         'show_settlement_vault': bool(vault),
         'show_disputed_notice': (contract.status == 'disputed'),
-        # One device holds one role per contract, so both sides are never
-        # shown together. Kept as False for template compatibility.
+        # One device holds one role, so both sides are never shown together.
         'show_role_overlap_notice': False,
         'formatted_amount': money(contract.amount),
         'formatted_fee': money(contract.service_fee),
@@ -357,8 +336,7 @@ def contract_detail(request, code):
         )
         context['vault_is_masked'] = not is_seller
 
-    # HTMX polls for the panel only, so a status change swaps the card in place
-    # instead of replacing the whole page.
+    # HTMX swaps the panel in place instead of replacing the page.
     template = (
         'escrow/_contract_panel.html'
         if request.headers.get('HX-Request') == 'true'
@@ -381,8 +359,7 @@ def initiate_payment(request, code):
     )
     result = gateway.initialize_vault_payment(contract, return_url)
     if result.get('status') and result.get('auth_url'):
-        # PayPal returns an order id; persist it so the callback + webhook
-        # can verify/capture against the same reference.
+        # Persist the PayPal order id so callback/webhook verify against it.
         order_id = result.get('order_id')
         if order_id and order_id != contract.gateway_reference:
             EscrowContract.objects.filter(pk=contract.pk).update(
@@ -395,22 +372,13 @@ def initiate_payment(request, code):
 
 
 def payment_callback(request, code):
-    """
-    Browser return leg from PayPal Checkout (return_url with ?token=ORDERID).
-
-    The token is the PayPal order id. We capture it server-side, then confirm
-    against OUR stored reference. The browser query string is never trusted
-    beyond identifying which order to capture, and the move is a conditional
-    UPDATE, so replays can't double-advance.
-    """
+    """PayPal return leg. Captures the token server-side; the query string is never trusted and replays can't re-advance."""
     contract = get_object_or_404(EscrowContract, code=code)
     if contract.status == 'awaiting_funding':
         token = (request.GET.get('token') or '').strip()
         gateway = get_payment_gateway()
-        # If PayPal redirected with an order id, capture it first.
         if token and hasattr(gateway, 'capture_order'):
-            # Adopt the token as canonical if we don't have an order yet
-            # (e.g. init happened in another session).
+            # Adopt the token if we have no order yet (e.g. init happened in another session).
             if not contract.gateway_reference or contract.gateway_reference.startswith(contract.code + '_'):
                 EscrowContract.objects.filter(pk=contract.pk).update(
                     gateway_reference=token)
@@ -500,7 +468,6 @@ def paypal_webhook(request):
         recorded.processed_at = now()
         recorded.save(update_fields=['processed', 'processed_at'])
 
-    # Payout item completed -> complete escrow
     if event_type in ('PAYMENT.PAYOUTS-ITEM.SUCCEEDED', 'PAYMENT.PAYOUTSBATCH.SUCCESS'):
         batch_id = resource.get('payout_batch_id') or (resource.get('batch_header') or {}).get('payout_batch_id')
         sender_batch = resource.get('sender_batch_id') or (resource.get('batch_header') or {}).get('sender_batch_id')
@@ -529,14 +496,12 @@ def paypal_webhook(request):
         return HttpResponse("Webhook received", status=200)
 
     if event_type in ('PAYMENT.CAPTURE.COMPLETED', 'CHECKOUT.ORDER.APPROVED'):
-        # Resolve order -> capture to get canonical amount/currency.
         order_id = resource.get('supplementary_data', {}).get('related_ids', {}).get('order_id')
         capture_id = resource.get('id') if event_type == 'PAYMENT.CAPTURE.COMPLETED' else None
-        # Try to find contract by gateway_reference == order_id, else by custom invoice/reference
         contract = None
         if order_id:
             contract = EscrowContract.objects.filter(gateway_reference=order_id).first()
-        # PayPal custom_id / invoice_id fallbacks
+        # PayPal custom_id/invoice_id fallback when order_id lookup misses.
         custom = resource.get('custom_id') or resource.get('invoice_id')
         if contract is None and custom:
             contract = EscrowContract.objects.filter(gateway_reference=custom).first()
@@ -674,12 +639,7 @@ def seller_raise_dispute(request, code):
 
 @require_POST
 def cancel_escrow(request, code):
-    """Party-initiated cancel, allowed only before money has moved.
-
-    Once funded, cancellation needs an ops refund via the payment provider
-    dashboard/API, so funded contracts redirect with an explanatory message
-    instead of transitioning here.
-    """
+    """Party cancel before funding only; funded escrows need an ops refund, not a transition."""
     contract = get_object_or_404(EscrowContract, code=code)
     if not is_party(contract, request):
         return HttpResponseForbidden("Only a verified party can cancel this escrow.")
@@ -818,8 +778,7 @@ __all__ = [
 
 
 def demo_pay_page(request, code):
-    """Simulated checkout, demo mode only. Confirming here runs the exact
-    same backend funding confirmation a verified PayPal webhook would."""
+    """Demo-only checkout; confirming runs the same backend funding confirmation as a webhook."""
     if not getattr(settings, 'DEMO_MODE', False) or not getattr(
             settings, 'DEMO_SIMULATE_PAYMENTS', True):
         raise Http404()

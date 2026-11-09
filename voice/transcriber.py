@@ -1,12 +1,5 @@
-"""Muse Voice Transcribe client over the Meta Model API.
-
-Pipeline: arbitrary audio (webm/opus, ogg/opus) is converted to mono 16-bit PCM WAV at 24 kHz with the pip-bundled ffmpeg
-binary (imageio-ffmpeg, no apt needed), then sent to
-``POST {ASR_BASE_URL}/v1/asr/transcribe`` in PUSH_TO_TALK mode.
-
-Billing: ~$0.18/hr of audio processed. Input is capped (VOICE_MAX_BYTES)
-so a malicious upload cannot burn unbounded budget. Transcripts are
-returned as plain data; nothing here touches escrow state.
+"""Muse Voice Transcribe client.
+Input is capped so uploads cannot burn unbounded budget; transcripts touch no escrow state.
 """
 import logging
 import subprocess
@@ -40,11 +33,7 @@ def _ffmpeg_exe():
 
 
 def convert_to_wav(audio_bytes):
-    """Convert arbitrary audio to mono 16-bit PCM WAV at 24 kHz.
-
-    Raises VoiceTranscriptionError on empty input, oversize input, or
-    ffmpeg failure. Never logs audio content.
-    """
+    """Convert arbitrary audio to mono 16-bit PCM WAV at 24 kHz. Never logs audio content."""
     if not audio_bytes:
         raise VoiceTranscriptionError("No audio was received.")
     max_bytes = getattr(settings, 'VOICE_MAX_BYTES', 8 * 1024 * 1024)

@@ -1,9 +1,4 @@
-"""Full-circle E2E through the chat UI (HTTP), roles/fee-payer swapped.
-
-Both parties use only /assistant/send/: create, verify, join, fund (via
-PayPal webhook), ship, receive, bank details, release, completed.
-The model is scripted deterministically; gateways/OTP are mocked.
-"""
+"""Full-circle E2E through the chat UI; roles/fee-payer swapped, model scripted, gateways mocked."""
 import json
 from decimal import Decimal
 from unittest.mock import patch
@@ -52,7 +47,6 @@ class ChatE2ETest(TestCase):
         mock_payout.return_value.execute_seller_payout.return_value = {
             'status': True, 'data': {'reference': 'TRF_E2E', 'transfer_code': 'T1'}}
 
-    # -- helpers ---------------------------------------------------------
     def send(self, client, message, script=()):
         self.queue.extend(script)
         response = client.post('/assistant/send/', {'message': message})
@@ -69,19 +63,16 @@ class ChatE2ETest(TestCase):
         return json.loads(row.content)
 
     def convo_of(self, client):
-        # The web conversation identity is the client's session key.
         key = client.session.session_key
         return AIConversation.objects.get(
             channel='web', channel_identity=f'session:{key}')
 
     def confirm_tool(self, client, name, arguments, cid):
-        """Gate + confirm: first call proposes; a bare 'yes' then executes
-        deterministically in the backend (no second model call scripted)."""
+        """First call proposes; a bare 'yes' then executes with no second model call."""
         self.send(client, 'go ahead', [tool_call(name, arguments, cid),
                                        text_reply('Please confirm.')])
         self.send(client, 'yes, I confirm')
 
-    # -- one full circle ---------------------------------------------------
     def run_circle(self, tag, creator_role, fee_payer):
         amount = '250000'
         fee = Decimal('10.00')
@@ -95,7 +86,6 @@ class ChatE2ETest(TestCase):
         creator = Client()
         counterparty = Client()
 
-        # 1. Creator describes the deal in chat.
         self.send(creator, 'create my escrow', [
             tool_call('create_escrow_draft', {
                 'title': 'Laptop', 'description': 'Laptop deal',
@@ -105,22 +95,17 @@ class ChatE2ETest(TestCase):
             }, 'd1'), text_reply('Draft saved. Confirm?')])
         draft = EscrowDraft.objects.latest('id')
 
-        # 2. Creator confirms; the complete draft was auto-proposed at the
-        # end of the last turn, so a bare 'yes' executes it directly and
-        # creation parks on the emailed code.
         self.send(creator, 'yes, I confirm')
         outcome = self.tool_outcome(self.convo_of(creator), 'request_escrow_creation')
         self.assertTrue(outcome['ok'], outcome)
         self.assertTrue(outcome['data'].get('verification_required'), outcome)
 
-        # 3. Creator pastes the code; escrow exists, code is LKTR-prefixed.
         self.send(creator, self.last_otp())
         contract = EscrowContract.objects.get(creator_email=creator_email)
         self.assertTrue(contract.code.startswith('LKTR'), contract.code)
         self.assertEqual(contract.status, 'awaiting_counterparty')
         self.assertEqual(contract.fee_payer, fee_payer)
 
-        # 4. Counterparty joins from a fresh chat: code -> email -> OTP.
         self.send(counterparty, f'I want to join {contract.code}', [
             text_reply("What's your email?")])
         self.send(counterparty, f'my email is {counterparty_email}', [
@@ -141,14 +126,12 @@ class ChatE2ETest(TestCase):
         buyer = creator if buyer_email == creator_email else counterparty
         seller = creator if seller_email == creator_email else counterparty
 
-        # 5. Buyer funds: chat fetches the PayPal link after confirmation.
         self.confirm_tool(buyer, 'request_payment_link',
                           {'escrow_reference': contract.code}, 'pay')
         outcome = self.tool_outcome(self.convo_of(buyer), 'request_payment_link')
         self.assertTrue(outcome['ok'], outcome)
         self.assertEqual(outcome['data']['payment_url'], 'https://pay.test/checkout')
 
-        # 6. PayPal webhook verifies the payment server-side.
         expected_total = Decimal(amount) + (fee if fee_payer == 'buyer' else Decimal('0'))
         self.assertEqual(contract.total_charge, expected_total)
         payload = {'event_type': 'PAYMENT.CAPTURE.COMPLETED', 'id': f'evt-e2e-{tag}',
@@ -170,20 +153,17 @@ class ChatE2ETest(TestCase):
         self.assertTrue(AuditEvent.objects.filter(
             escrow=contract, action='funding.confirmed').exists())
 
-        # 7. Seller ships via chat.
         self.confirm_tool(seller, 'request_delivery_confirmation',
                           {'escrow_reference': contract.code, 'stage': 'dispatch'}, 'ship')
         contract.refresh_from_db()
         self.assertEqual(contract.status, 'in_transit')
 
-        # 8. Buyer confirms receipt; inspection deadline is set.
         self.confirm_tool(buyer, 'request_delivery_confirmation',
                           {'escrow_reference': contract.code, 'stage': 'receipt'}, 'recv')
         contract.refresh_from_db()
         self.assertEqual(contract.status, 'in_inspection')
         self.assertIsNotNone(contract.inspection_ends)
 
-        # 9. Buyer tries to release before bank details: blocked, seller told.
         self.confirm_tool(buyer, 'request_release_approval',
                           {'escrow_reference': contract.code}, 'rel1')
         outcome = self.tool_outcome(self.convo_of(buyer), 'request_release_approval')
@@ -192,7 +172,6 @@ class ChatE2ETest(TestCase):
         contract.refresh_from_db()
         self.assertEqual(contract.status, 'in_inspection')
 
-        # 10. Seller enters the PayPal payout email in chat; backend saves it.
         self.confirm_tool(seller, 'request_seller_bank_details', {
             'escrow_reference': contract.code,
             'paypal_email': 'seller@example.com'}, 'bank')
@@ -203,7 +182,6 @@ class ChatE2ETest(TestCase):
         self.assertEqual(vault.paypal_email, 'seller@example.com')
         self.assertEqual(vault.bank_name, 'PayPal')
 
-        # 11. Buyer releases; seller is paid; escrow completes.
         self.confirm_tool(buyer, 'request_release_approval',
                           {'escrow_reference': contract.code}, 'rel2')
         outcome = self.tool_outcome(self.convo_of(buyer), 'request_release_approval')
@@ -216,7 +194,6 @@ class ChatE2ETest(TestCase):
         self.assertEqual(contract.seller_receives, expected_seller)
         return contract
 
-    # -- matrix ------------------------------------------------------------
     def test_creator_buyer_pays_fee(self):
         contract = self.run_circle('a1', creator_role='buyer', fee_payer='buyer')
         self.assertEqual(contract.total_charge, Decimal('250010'))

@@ -1,4 +1,3 @@
-// Copy-to-clipboard for escrow codes and account numbers.
         document.addEventListener('click', function (event) {
             var button = event.target.closest('[data-copy]');
             if (!button) return;
@@ -28,7 +27,6 @@
             }
         });
 
-        // Countdown to the end of the buyer's inspection window.
         function tickCountdowns() {
             document.querySelectorAll('[data-countdown]').forEach(function (el) {
                 var target = document.querySelector('[data-deadline]');

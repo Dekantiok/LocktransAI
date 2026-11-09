@@ -1,9 +1,4 @@
-"""Counterparty invitation emails (spec sections 8.6, 11).
-
-Sent once when an escrow first reaches awaiting_counterparty, from every
-creation path. Best-effort: mail failure never breaks verification, and
-the audit trail guards against reminder spam.
-"""
+"""Counterparty invitation emails: sent once per escrow, best-effort, audit-guarded against repeats."""
 from decimal import Decimal
 from unittest.mock import patch
 

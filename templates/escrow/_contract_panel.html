@@ -1,8 +1,4 @@
-{% comment %}
-Polled region for an escrow. The wrapper carries the hx-* attributes so a swap
-re-inserts them and polling continues. Polling is omitted for terminal escrows
-and while the tab is hidden, so a closed escrow costs nothing.
-{% endcomment %}
+{% comment %} Polled region: swaps re-insert hx attrs; skipped for terminal escrows. {% endcomment %}
 <div class="row justify-content-center"
      id="escrow-panel"
      {% if is_live %}hx-get="{% url 'contract_detail' contract.code %}"

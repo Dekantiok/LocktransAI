@@ -1,4 +1,3 @@
-"""Tests for the inference client (all network calls mocked)."""
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -326,7 +325,6 @@ class LoopTest(TestCase):
             convo.messages.filter(role='tool').order_by('-id').first().content)
         self.assertFalse(outcome['ok'])
         self.assertIn('CONFIRMATION_REQUIRED', outcome['error'])
-        # $500 -> $2.50 fee, buyer pays $502.50, seller receives $500.00
         self.assertIn('$2.50', outcome['error'])
         self.assertIn('$502.50', outcome['error'])
         self.assertIn('$500.00', outcome['error'])
@@ -341,8 +339,7 @@ class LoopTest(TestCase):
         convo = self.make_conversation(owner='buyer@example.com')
         propose_action(convo, 'request_escrow_creation', {'draft_id': 7})
         convo.refresh_from_db()
-        # The model sometimes re-emits the id as a string on its retry -
-        # that must still count as the same confirmed proposal.
+        # Model sometimes re-emits the id as a string; that must still match.
         self.assertTrue(confirmed(
             convo, 'request_escrow_creation', {'draft_id': '7'}))
 
@@ -439,7 +436,7 @@ class ChatViewTest(TestCase):
     def test_correct_code_binds_the_conversation_owner(self):
         from agent.models import AIConversation
         self.client.post('/assistant/verify/', {'email': 'chat@example.com'})
-        # Read the plaintext the same way the user does: from the sent payload.
+        # Read the plaintext the way the user does: from the sent payload.
         code = self.mock_send.call_args[0][1]
         with patch('agent.views.run_turn') as mock_turn:
             response = self.client.post('/assistant/send/', {'message': code})
@@ -619,10 +616,7 @@ class ChatViewTest(TestCase):
         self.assertEqual((pending.get('arguments') or {}).get('draft_id'), draft.id)
 
     def test_prose_only_turn_does_not_auto_propose(self):
-        # A turn that merely talks about a deal must never park a
-        # creation proposal: a later "yes" meant for another action
-        # (e.g. confirming dispatch) would otherwise execute it and
-        # create a stray escrow.
+        # Prose-only turns must never park a creation proposal: a later "yes" could create a stray escrow.
         from decimal import Decimal
         from escrow.models import EscrowDraft
         from agent.loop import run_turn

@@ -1,9 +1,3 @@
-# Render blueprint: web service + managed Postgres. Deploy via the
-# Render dashboard (New > Blueprint, point at this repo) or `render` CLI.
-# After first deploy, update DJANGO_ALLOWED_HOSTS and CSRF_TRUSTED_ORIGINS
-# with the real https://<service>.onrender.com hostname.
-# DATABASE_URL below can point at the provisioned database or be replaced
-# with any external Postgres connection string.
 services:
   - type: web
     name: locktrans

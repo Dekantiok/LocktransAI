@@ -1,9 +1,4 @@
-"""Authentication and authorization boundaries (spec sections 4, 13, 15.1).
-
-OTP lifecycle, email normalization, per-sender WhatsApp code binding, and
-the verified-but-not-authorized rule: proving an email never grants access
-to someone else's escrow.
-"""
+"""Auth boundaries: OTP lifecycle, email normalization, per-sender code binding, verified-is-not-authorized."""
 import datetime
 from decimal import Decimal
 from unittest.mock import patch

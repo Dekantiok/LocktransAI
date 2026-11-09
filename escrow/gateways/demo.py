@@ -1,9 +1,4 @@
-"""Demo payment gateway: simulates PayPal without keys or real money.
-
-Only active when DEMO_MODE is on and DEMO_SIMULATE_PAYMENTS is on.
-Funding points at an internal demo checkout page; payouts return a fake
-successful transfer. Nothing here ever touches the PayPal API.
-"""
+"""Simulated PayPal gateway for DEMO_MODE; no real money or API calls."""
 import logging
 
 from django.urls import reverse

@@ -1,9 +1,4 @@
-"""WhatsApp Cloud API adapter.
-
-Provider-shaped code only: signatures, payload parsing, delivery. No escrow logic here -
-the views hand normalised messages to ``flow.py``, which drives the shared
-agent loop and backend tools.
-"""
+"""WhatsApp Cloud API adapter: signatures, payload parsing, delivery. No escrow logic."""
 import hashlib
 import hmac
 import logging
@@ -15,12 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def verify_signature(raw_body, signature_header):
-    """Validate ``X-Hub-Signature-256`` against the app secret.
-
-    Returns True when valid. When no app secret is configured (local dev),
-    validation is skipped with a warning so flows can be exercised without
-    Meta credentials, production must always set WHATSAPP_APP_SECRET.
-    """
+    """Validate X-Hub-Signature-256; without a secret, DEBUG skips it and prod rejects."""
     secret = getattr(settings, 'WHATSAPP_APP_SECRET', '')
     if not secret:
         if getattr(settings, 'DEBUG', False):
@@ -35,13 +25,7 @@ def verify_signature(raw_body, signature_header):
 
 
 def parse_webhook_payload(payload):
-    """Normalise a Cloud API webhook payload.
-
-    Returns ``(messages, statuses)`` where each message is
-    ``{'wamid': str, 'from': str, 'type': str, 'text': str}`` and each
-    status is ``{'wamid': str, 'status': str, 'recipient': str}``.
-    Malformed payloads yield empty lists, never an exception.
-    """
+    """Normalise a webhook payload to (messages, statuses); malformed payloads yield empty lists."""
     messages, statuses = [], []
     if not isinstance(payload, dict):
         return messages, statuses
@@ -84,12 +68,7 @@ def parse_webhook_payload(payload):
 
 
 def send_text_message(to_wa_id, body):
-    """Deliver one text reply via the Cloud API. Never raises.
-
-    Returns True on accepted delivery, False otherwise (unknown numbers,
-    expired windows, bad credentials). Callers log the failure; the
-    webhook itself still acks 200 so Meta stops retrying.
-    """
+    """Deliver one text reply. Never raises; failures return False."""
     token = getattr(settings, 'WHATSAPP_ACCESS_TOKEN', '')
     phone_id = getattr(settings, 'WHATSAPP_PHONE_NUMBER_ID', '')
     api_version = getattr(settings, 'WHATSAPP_API_VERSION', 'v21.0')
@@ -129,12 +108,7 @@ def _media_host_ok(url):
 
 
 def download_media(media_id):
-    """Download a voice note / audio attachment. Returns bytes or None.
-
-    Streams with a byte cap so a hostile media id cannot fill memory, and
-    only fetches from Meta hosts. Never raises: failures return None and
-    the caller guides the user back to text or a shorter recording.
-    """
+    """Download voice/audio bytes from Meta hosts only, with a byte cap. Never raises."""
     token = getattr(settings, 'WHATSAPP_ACCESS_TOKEN', '')
     api_version = getattr(settings, 'WHATSAPP_API_VERSION', 'v21.0')
     if not token or not media_id:

@@ -1,9 +1,4 @@
-"""Demo mode: only Termii OTP + PayPal payment are simulated.
-
-Judges can run the full AI/escrow flow with no provider keys: the demo
-OTP code is accepted (wrong codes still fail), funding runs through an
-internal simulated checkout, and payouts return fake success.
-"""
+"""Demo mode: only Termii OTP + PayPal payment are simulated; judges run the full flow with no keys."""
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -107,9 +102,7 @@ class DemoGatewayTest(TestCase):
 @override_settings(DEMO_MODE=False)
 class DemoGuardTest(TestCase):
     def test_prod_settings_module_allows_import(self):
-        # The hard DEMO-in-prod refusal lives at settings-import time;
-        # it is exercised in CI with DJANGO_DEBUG=False. Here we pin the
-        # two settings that compose it.
+        # DEMO-in-prod refusal lives at settings-import time (exercised in CI with DEBUG=False).
         from django.conf import settings
         self.assertFalse(settings.DEMO_MODE)
 

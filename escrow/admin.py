@@ -41,12 +41,7 @@ class EscrowContractAdmin(admin.ModelAdmin):
 
     @admin.action(description="Verify pending payment with PayPal")
     def verify_pending_payment(self, request, queryset):
-        """Recover escrows stuck in awaiting_funding after a real payment.
-
-        Asks PayPal for each contract's stored order reference and advances the
-        ones that are actually paid. Safe to re-run: confirmation is a
-        conditional UPDATE that only fires once.
-        """
+        """Recover paid-but-unconfirmed escrows; safe to re-run (conditional UPDATE fires once)."""
         verified = 0
         for contract in queryset:
             if contract.status != 'awaiting_funding' or not contract.gateway_reference:

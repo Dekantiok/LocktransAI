@@ -2,12 +2,7 @@ from django.db import models
 
 
 class AIConversation(models.Model):
-    """One ongoing agent session on a channel.
-
-    Ownership binds to a verified email after OTP proof; until then the
-    agent must not touch escrow records. ``channel_identity`` is a session
-    marker, never proof of identity.
-    """
+    """One agent session per channel. Ownership binds only after OTP proof; channel_identity is never proof."""
 
     CHANNEL_CHOICES = [
         ('web', 'Website chat'),
@@ -17,17 +12,11 @@ class AIConversation(models.Model):
     channel = models.CharField(max_length=15, choices=CHANNEL_CHOICES)
     channel_identity = models.CharField(max_length=255, db_index=True)
     owner_email = models.EmailField(null=True, blank=True, db_index=True)
-    # Email awaiting OTP proof for in-chat verification (website assistant).
-    # A bare 6-digit reply while this is set is consumed as the code -
-    # never forwarded to the model.
+    # Bare 6-digit reply while set is consumed as the code, never sent to the model.
     pending_email = models.EmailField(null=True, blank=True)
-    # Flow context that must survive an OTP round-trip, e.g.
-    # {'join_escrow_reference': 'LKTR...'} while verification is pending.
+    # Flow context surviving OTP round-trips (e.g. pending join reference).
     pending_context = models.JSONField(default=dict, blank=True)
-    # Awaiting user confirmation for one consequential tool call:
-    # {'tool': name, 'arguments': {...}, 'proposed_at': iso-timestamp}.
-    # Set when the agent presents a proposal, cleared on execution or
-    # expiry. Never set from model input, only by the loop itself.
+    # Pending consequential tool call awaiting confirmation; set only by the loop.
     pending_action = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

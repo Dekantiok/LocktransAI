@@ -1,5 +1,4 @@
-/* Record with MediaRecorder, POST the blob, hand the transcript back.
-   Audio only ever goes to our own transcription endpoint. */
+/* Audio posts only to our own transcription endpoint. */
 (function () {
   'use strict';
 
@@ -15,9 +14,7 @@
               navigator.mediaDevices.getUserMedia);
   }
 
-  // stop(send=true) finishes and uploads the take; stop(false) discards
-  // it. A cancelled take must never reach transcription: cancelling means
-  // "do not send this audio anywhere", so onstop drops the chunks.
+  // Cancelled takes never upload: onstop drops chunks.
   function recordOnce(onDone, onError) {
     if (!supported()) {
       onError(new Error('Voice recording is not supported in this browser.'));
@@ -130,11 +127,7 @@
     thread.scrollTop = thread.scrollHeight;
   }
 
-  /* Sent message appears instantly, typing dots below it, input cleared
-     for the follow-up, the server swap then replaces the whole thread.
-     The dots stay up until the send itself settles: the 10s live poll
-     is paused mid-flight so it cannot wipe them (and the optimistic
-     bubble) before the answer lands. */
+  /* Optimistic bubble stays up; live poll paused until send settles. */
   function setSending(on) {
     try {
       if (on) document.body.dataset.chatSending = '1';
@@ -273,8 +266,6 @@
     mic.addEventListener('pointercancel', cancelHold);
   }
 
-  /* Poll for updates pushed into this conversation (e.g. the other
-     party shipped, funded, or released) and swap them in live. */
   function initChatPoll() {
     var result = document.getElementById('chat-result');
     if (!result || !document.getElementById('chat-form')) return;

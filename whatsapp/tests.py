@@ -1,4 +1,3 @@
-"""Tests for the WhatsApp adapter + agent wiring (all network calls mocked)."""
 import hashlib
 import hmac
 import json
@@ -44,7 +43,7 @@ class WebhookTest(TestCase):
         self.send_patcher = patch('whatsapp.adapter.send_text_message', return_value=True)
         self.mock_flow_send = self.send_patcher.start()
         self.addCleanup(self.send_patcher.stop)
-        # send_otp_via_termii is reached through escrow.services.issue_otp
+        # OTP delivery goes through escrow.services.issue_otp.
         self.otp_patcher = patch('escrow.services.send_otp_via_termii', return_value=True)
         self.otp_patcher.start()
         self.addCleanup(self.otp_patcher.stop)
@@ -226,7 +225,6 @@ class CreationResumeTest(TestCase):
             creator_role='buyer', counterparty_email='seller@example.com',
             inspection_days=3, status='draft',
         )
-        # Simulate the agent having proposed creation and sent the code.
         link = WhatsAppLink.objects.create(wa_id=wa_id, pending_email='')
         conversation = get_or_create_conversation('whatsapp', wa_id)
         propose_action(conversation, 'request_escrow_creation', {'draft_id': draft.id})
@@ -236,7 +234,6 @@ class CreationResumeTest(TestCase):
         draft.owner_email = 'buyer@example.com'
         draft.save(update_fields=['owner_email'])
         code = self.mock_otp.call_args[0][1] if self.mock_otp.called else None
-        # Issue the creation OTP explicitly to mirror the registry path.
         from escrow.services import issue_otp
         with patch('escrow.services.send_otp_via_termii', return_value=True) as mock_send2:
             issue_otp('buyer@example.com', 'create')

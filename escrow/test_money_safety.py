@@ -1,9 +1,4 @@
-"""Money safety (spec sections 5.4, 5.5, 10, 15.5).
-
-Amount AND currency verification, funding/payout idempotency, uncertain
-payout parking, and dispute blocking auto-release. Replays and races must
-never move money twice.
-"""
+"""Money safety: amount/currency checks, funding/payout idempotency, uncertain parking, dispute blocking auto-release."""
 import datetime
 from decimal import Decimal
 from unittest.mock import patch

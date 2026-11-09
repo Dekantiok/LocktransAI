@@ -25,29 +25,14 @@ Wire Django (INFERENCE_* in .env locally, Render dashboard in prod):
 Any OpenAI-compatible server works here — a Modal shared endpoint
 or your own deployment.
 
-Tool calling: vLLM serves the ``tools`` parameter natively when the
-model's tokenizer ships a tool-capable chat template. Muse-Spark is a
-custom architecture: if its template lacks tool support or vLLM cannot
-load it, the agent loop still runs (plain replies, manual forms as
-fallback) — verify with a live turn before judging. TOOL_CALL_PARSER
-selects vLLM's parser (e.g. ``llama3_json`` for Llama-3.x, ``hermes``
-for Qwen/Hermes-style, ``mistral`` for Mistral). Leave it empty to let
-the model answer without structured tool calls and the agent loop
-will degrade to plain replies for those turns.
+Tool calling: vLLM serves the ``tools`` parameter when the tokenizer's chat template supports it; TOOL_CALL_PARSER selects the parser (leave empty for plain replies, the loop degrades gracefully).
 """
 
 import os
 
 import modal
 
-# Public weights (no HF account needed unless gated):
-#   meta-models/Muse-Spark-Open-816B-A42B-NVFP4   <- default, ~4-bit, smallest
-#   meta-models/Muse-Spark-Open-816B-A42B         <- full precision, ~1.6TB
-# 816B MoE (42B active) needs serious VRAM even quantized: the NVFP4
-# build wants roughly 8xH100-80GB. That is $$$/hr on any cloud, so only
-# deploy this for short judging/demo windows and let it scale to zero.
-# For day-to-day dev without GPU spend, use a Modal shared
-# endpoint instead of deploying this file.
+# NVFP4 default wants ~8xH100; deploy only for short demo windows, else use a shared endpoint.
 MODEL_ID = os.environ.get(
     "MODEL_ID", "meta-models/Muse-Spark-Open-816B-A42B-NVFP4")
 TOOL_CALL_PARSER = os.environ.get("TOOL_CALL_PARSER", "") or None
@@ -67,8 +52,7 @@ image = (
     .env({"HF_HUB_OFFLINE": "0"})
 )
 
-# Persistent HF cache so redeploys / cold starts don't re-download
-# hundreds of GB of weights every time.
+# Persistent HF cache avoids re-downloading weights on redeploys.
 weights_cache = modal.Volume.from_name("locktrans-hf-cache", create_if_missing=True)
 
 
@@ -98,9 +82,7 @@ class Model:
         from vllm import AsyncLLMEngine
         from vllm.engine.arg_utils import AsyncEngineArgs
 
-        # Custom Meta architecture: run the repo's own modeling code.
-        # (Sandboxed in our own container; never enable this for
-        # untrusted third-party repos.)
+        # Custom architecture: runs the repo's own modeling code (our container only).
         kwargs = dict(
             model=MODEL_ID,
             trust_remote_code=True,
@@ -204,7 +186,6 @@ class Model:
 
     @modal.method()
     async def chat_blocking(self, body: dict) -> dict:
-        # Plain remote-callable entry point (useful for jobs/scripts).
         return await self._chat(body)
 
     @modal.web_endpoint(method="POST", docs=True)
@@ -220,8 +201,7 @@ class Model:
             )
         body = await request.json()
         try:
-            # Web endpoints on a Cls run inside the class container,
-            # so the loaded engine is directly available on self.
+            # Web endpoints run inside the class container, so the engine is available on self.
             result = await self._chat(body)
         except Exception as exc:
             return Response(

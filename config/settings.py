@@ -23,11 +23,7 @@ ALLOWED_HOSTS = [
 ]
 
 if DEBUG:
-    # Local tunnel providers (cloudflared quick tunnels, ngrok, localtunnel)
-    # mint a random public host on every run. Allow their suffixes in dev
-    # only, so PayPal webhooks and callbacks can reach this machine without
-    # editing env and restarting on each tunnel. Never enable in production:
-    # the DEBUG-off guard above already refuses the default host list.
+    # Dev only: allow tunnel suffixes so webhooks reach this machine; never in production.
     ALLOWED_HOSTS += [
         suffix for suffix in (
             '.trycloudflare.com', '.ngrok.io', '.ngrok-free.app', '.loca.lt',
@@ -37,8 +33,6 @@ if DEBUG:
 
 if not DEBUG and ALLOWED_HOSTS == ['127.0.0.1', 'localhost']:
     raise RuntimeError("DJANGO_ALLOWED_HOSTS must be set when DJANGO_DEBUG is off.")
-
-# --- Security headers --------------------------------------------------------
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -53,9 +47,7 @@ INSTALLED_APPS = [
     'whatsapp',
 ]
 
-# Content-Security-Policy values are plain tuples because the inline
-# styles/scripts predate nonces; tightening to nonces comes with the
-# frontend build step, not before it.
+# Plain tuples: inline styles/scripts predate nonces; nonces come with the frontend build.
 CONTENT_SECURITY_POLICY = {
     'DIRECTIVES': {
         'default-src': ("'self'",),
@@ -70,11 +62,7 @@ CONTENT_SECURITY_POLICY = {
 }
 
 def _permissions_policy(get_response):
-    """Permissions-Policy header (mic only, self only).
-
-    Django has no setting for it, so this tiny middleware sets it
-    explicitly rather than leaving the header absent.
-    """
+    """Permissions-Policy header (mic only, self only); Django has no setting for it."""
     def middleware(request):
         response = get_response(request)
         response['Permissions-Policy'] = 'microphone=(self), camera=()'
@@ -116,8 +104,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# SQLite locally; managed Postgres (via DATABASE_URL) when deployed with
-# DEBUG off, e.g. Render. Keeps the single-node override for good measure.
+# SQLite locally; managed Postgres via DATABASE_URL when DEBUG is off.
 if DEBUG:
     DATABASES = {
         'default': {
@@ -136,9 +123,7 @@ else:
 
 CACHES = {
     'default': {
-        # Single-process local cache. OTP cooldowns, voice throttling, and
-        # bank lists fragment across workers by design; SESSION_ENGINE below
-        # stays database-backed so logins do not.
+        # LocMem cache fragments OTP/voice/bank state by design; sessions stay database-backed.
         'BACKEND': os.environ.get(
             'CACHE_BACKEND', 'django.core.cache.backends.locmem.LocMemCache'),
         'LOCATION': os.environ.get('CACHE_LOCATION', 'locktrans'),
@@ -182,20 +167,14 @@ STORAGES = {
         'BACKEND': 'django.core.files.storage.FileSystemStorage',
     },
     'staticfiles': {
-        # Not the manifest variant: the admin 500s on a missing manifest entry
-        # until collectstatic has been run, which is an easy trap on a fresh
-        # checkout. Fingerprinted assets buy little here since WhiteNoise serves
-        # a single collected directory.
+        # Not manifest storage: missing entries 500 the admin on fresh checkouts.
         'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
     },
 }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# --- Locktrans.AI integration settings -----------------------------------------
-
-# Outgoing email (counterparty invitations). Console backend in DEBUG so
-# links print to the log; configure SMTP for production delivery.
+# Console backend in DEBUG; configure SMTP for production delivery.
 if DEBUG:
     EMAIL_BACKEND = os.environ.get(
         'EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
@@ -208,9 +187,7 @@ EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
 if not DEBUG and EMAIL_BACKEND.endswith('smtp.EmailBackend') and not EMAIL_HOST:
-    # No SMTP configured: invitations print to the log instead of crashing
-    # the boot. Judges share the on-screen escrow code manually; set
-    # EMAIL_HOST (+ credentials) for real email delivery.
+    # No SMTP: log invitations instead of crashing the boot.
     import logging as _logging
     _logging.getLogger(__name__).warning(
         "EMAIL_HOST unset: counterparty invitations will log instead of sending."
@@ -219,17 +196,11 @@ if not DEBUG and EMAIL_BACKEND.endswith('smtp.EmailBackend') and not EMAIL_HOST:
 DEFAULT_FROM_EMAIL = os.environ.get(
     'DEFAULT_FROM_EMAIL', 'Locktrans.AI <no-reply@locktrans.example>')
 
-# Demo mode for judging/testing: Termii OTP delivery is stubbed (the
-# DEMO_OTP_CODE is accepted instead) and payments run through a simulated
-# gateway. AI, escrow logic, and everything else stay fully real.
+# Demo mode: OTP delivery is stubbed and payments simulated; AI and escrow logic stay real.
 DEMO_MODE = os.environ.get('DEMO_MODE', 'False') == 'True'
 DEMO_OTP_CODE = os.environ.get('DEMO_OTP_CODE', '123456') or '123456'
 DEMO_ALLOW_PROD = os.environ.get('DEMO_ALLOW_PROD', 'False') == 'True'
-# Simulated vs real payments inside Demo mode. True (default) routes
-# funding/payouts through the internal simulated checkout: no PayPal keys
-# needed. False keeps the OTP stub but uses the real PayPal sandbox, so
-# judges with PayPal access exercise live checkout, capture, and payouts
-# (PayPal sandbox accounts required; PAYPAL_* must be configured).
+# True routes funding/payouts through the simulated checkout; False uses the real PayPal sandbox.
 DEMO_SIMULATE_PAYMENTS = os.environ.get('DEMO_SIMULATE_PAYMENTS', 'True') == 'True'
 
 if not DEBUG and DEMO_MODE and not DEMO_ALLOW_PROD:
@@ -243,8 +214,7 @@ if not DEBUG and DEMO_MODE and not DEMO_ALLOW_PROD:
 SESSION_ENGINE = os.environ.get(
     'SESSION_ENGINE', 'django.contrib.sessions.backends.db')
 
-# PayPal (Orders v2 + Payouts). Sandbox by default; set PAYPAL_MODE=live
-# with live credentials for production.
+# PayPal Orders v2 + Payouts. Sandbox by default; PAYPAL_MODE=live with live credentials for production.
 PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID', '')
 PAYPAL_CLIENT_SECRET = os.environ.get('PAYPAL_CLIENT_SECRET', '')
 PAYPAL_MODE = os.environ.get('PAYPAL_MODE', 'sandbox')
@@ -266,58 +236,39 @@ WHATSAPP_WEBHOOK_VERIFY_TOKEN = os.environ.get('WHATSAPP_WEBHOOK_VERIFY_TOKEN', 
 WHATSAPP_APP_SECRET = os.environ.get('WHATSAPP_APP_SECRET', '')
 WHATSAPP_API_VERSION = os.environ.get('WHATSAPP_API_VERSION', 'v21.0')
 
-# Muse Voice Transcribe (Meta Model API). Separate key from the chat
-# model; voice features degrade to typed input when unset.
+# Separate key from the chat model; voice degrades to typed input when unset.
 MODEL_API_KEY = os.environ.get('MODEL_API_KEY', '')
 ASR_BASE_URL = os.environ.get('ASR_BASE_URL', 'https://api.meta.ai')
 ASR_MODEL = os.environ.get('ASR_MODEL', 'muse-voice-transcribe-1.0')
 VOICE_MAX_BYTES = int(os.environ.get('VOICE_MAX_BYTES', str(8 * 1024 * 1024)))
 VOICE_TIMEOUT = int(os.environ.get('VOICE_TIMEOUT', '60'))
 
-# Model inference: any OpenAI-compatible `/v1` endpoint. Point these three
-# at Modal, a self-hosted server, or any other provider — swapping AI
-# servers is a config change, no code changes needed. Example values
-# below are a Modal shared endpoint; use whatever your provider gives you.
+# Any OpenAI-compatible /v1 endpoint; swapping AI servers is a config change, no code needed.
 INFERENCE_API_KEY = os.environ.get('INFERENCE_API_KEY', '')
 INFERENCE_BASE_URL = os.environ.get('INFERENCE_BASE_URL', '')
 INFERENCE_MODEL = os.environ.get('INFERENCE_MODEL', '')
 
-# Bounded agent execution: max tool iterations per user message and the
-# per-request timeout for a single inference call. INFERENCE_MAX_TOKENS
-# must cover chain-of-thought plus the answer on reasoning models.
+# INFERENCE_MAX_TOKENS must cover chain-of-thought plus the answer on reasoning models.
 AGENT_MAX_ITERATIONS = int(os.environ.get('AGENT_MAX_ITERATIONS', '8'))
 AGENT_REQUEST_TIMEOUT = int(os.environ.get('AGENT_REQUEST_TIMEOUT', '60'))
 INFERENCE_MAX_TOKENS = int(os.environ.get('INFERENCE_MAX_TOKENS', '16384'))
 
-# Seconds before an outbound PayPal/Termii call is abandoned. Without this a
-# slow gateway holds the user's request open indefinitely, which matters most on
-# the payout path.
+# Bound outbound gateway calls so a slow gateway never holds requests open (matters most on payout).
 GATEWAY_HTTP_TIMEOUT = int(os.environ.get('GATEWAY_HTTP_TIMEOUT', '15'))
 
-# Cap on outbound WhatsApp media downloads (voice notes). Notes above the
-# cap are rejected before download state accumulates; the transcriber also
-# caps the converted WAV independently.
+# Cap WhatsApp media downloads; the transcriber also caps the converted WAV independently.
 WHATSAPP_MEDIA_MAX_BYTES = int(os.environ.get('WHATSAPP_MEDIA_MAX_BYTES', str(8 * 1024 * 1024)))
 
-# Minimum gap between one-time codes sent to the same address for the same
-# purpose, which bounds inbox spam driven from a known escrow code.
+# Cooldown bounds inbox spam driven from a known escrow code.
 OTP_ISSUE_COOLDOWN_SECONDS = int(os.environ.get('OTP_ISSUE_COOLDOWN_SECONDS', '60'))
 
-# Print one-time codes to the log while developing. Off by default so a
-# credential can never leak to a shared console.
+# Log OTPs only while developing; off by default so credentials never leak.
 LOG_OTP_TO_CONSOLE = os.environ.get('LOG_OTP_TO_CONSOLE', 'False') == 'True'
 
-# Deliver real Termii emails while DEBUG is on. The notifications module
-# otherwise short-circuits to a mock in DEBUG (returns True without sending),
-# which is why a correct TERMII_API_KEY still sends nothing locally. Turn this
-# on only for live local testing, every OTP then costs a real Termii credit.
+# Opt-in live Termii sends in DEBUG; every OTP then costs a real credit.
 TERMII_SEND_IN_DEBUG = os.environ.get('TERMII_SEND_IN_DEBUG', 'False') == 'True'
 
-# --- Security / deployment ---------------------------------------------------
-
-# Trusted origins for cross-site POSTs (tunnel/Ngrok hosts in dev,
-# canonical domain in prod). Parsed in all modes: with DEBUG=True the
-# dev server still rejects HTTPS origins not on this list.
+# Trusted origins for cross-site POSTs; DEBUG still rejects HTTPS origins not on this list.
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
@@ -330,8 +281,7 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'True') == 'True'
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    # Preloading is an opt-in commitment: once a browser sees it, the domain is
-    # forced to HTTPS for months and the decision is hard to walk back.
+    # Preloading is opt-in: browsers force HTTPS for months and it is hard to walk back.
     SECURE_HSTS_PRELOAD = os.environ.get('SECURE_HSTS_PRELOAD', 'False') == 'True'
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_REFERRER_POLICY = 'same-origin'
@@ -356,4 +306,3 @@ LOGGING = {
         },
     },
 }
-# NOTE: keep gateway timeouts conservative for sandbox + live.

@@ -57,26 +57,16 @@ def make_contract(**overrides):
 
 
 def sent_codes(mock_sender):
-    """Plaintext OTPs captured from the mocked delivery function, in order.
-
-    The database now stores only hashes, so tests read the known code the
-    same way the user does: from what was "sent".
-    """
+    """Plaintexts from the mocked delivery; the DB stores only hashes."""
     return [call[0][1] for call in mock_sender.call_args_list]
 
 
 def sent_code(mock_sender):
-    """Plaintext OTP from the most recent mocked delivery."""
     return sent_codes(mock_sender)[-1]
 
 
 def verify(client, email, code=None):
-    """Verify an email as OTP confirmation does (single role per device).
-
-    When ``code`` is given, binds that contract to the email via the
-    per-contract session map. Otherwise falls back to the My Escrow
-    single-email session, which grants that one role wherever it matches.
-    """
+    """Bind email like OTP confirmation (one role per device)."""
     session = client.session
     session['my_escrow_verified'] = email
     session.pop('verified_emails', None)
@@ -87,7 +77,7 @@ def verify(client, email, code=None):
     session.save()
 
 
-# Payouts go to a PayPal email now; no bank resolution is stubbed here.
+# Payouts go to PayPal email; no bank resolution stubbed.
 
 
 class ServiceFeeTest(TestCase):
@@ -244,12 +234,7 @@ class OtpTest(TestCase):
 )
 @override_settings(DEMO_MODE=False)
 class TermiiPayloadTest(TestCase):
-    """The emailed code must be the code the backend will accept.
-
-    Regression test: the payload once omitted `code`, so production emails
-    never matched the stored code while DEBUG/mocked sends hid the bug.
-    The database holds only a hash; this pins the plaintext actually sent.
-    """
+    """Regression: the emailed code must be the code the backend accepts (payload once omitted `code`)."""
 
     def _post(self, response_json):
         with patch('escrow.notifications.requests.post') as mock_post:
@@ -440,7 +425,6 @@ class AuthorizationTest(TestCase):
     def test_detail_masks_vault_for_buyer(self):
         verify(self.client, BUYER)
         response = self.client.get(reverse('contract_detail', kwargs={'code': 'AUTH1'}))
-        # The account number row shows only the masked PayPal reference.
         self.assertContains(response, 'se***@example.com')
 
     def test_detail_shows_full_vault_for_seller(self):
@@ -531,8 +515,7 @@ class WebhookTest(TestCase):
 
     @patch('escrow.views.get_payment_gateway')
     def test_callback_without_gateway_confirmation_leaves_state(self, mock_gateway):
-        """The browser return leg alone confirms nothing; only a PayPal
-        verification of our stored reference may advance the contract."""
+        """Only a PayPal verification of our stored reference may advance the contract."""
         mock_gateway.return_value.verify_transaction.return_value = {
             'status': True,
             'data': {'status': 'failed', 'reference': self.contract.gateway_reference,
@@ -594,8 +577,7 @@ class WebhookTest(TestCase):
 
 
 class CallbackVerifyTest(TestCase):
-    """The callback falls back to verifying our stored reference with
-    PayPal, so a missing/unreachable webhook can't strand a paid escrow."""
+    """Callback verifies our stored reference so a missing webhook can't strand a paid escrow."""
 
     def setUp(self):
         self.client = Client()
@@ -767,10 +749,7 @@ class PayoutTest(TestCase):
         self.assertEqual(gateway.execute_seller_payout.call_count, 1)
 
     def test_concurrent_release_pays_only_once(self):
-        """
-        Two requests that both read the contract while it was in_inspection must
-        not both win the transition, so only one transfer is ever issued.
-        """
+        """Two stale in_inspection reads must not both win; one transfer max."""
         request_a = EscrowContract.objects.get(pk=self.contract.pk)
         request_b = EscrowContract.objects.get(pk=self.contract.pk)
         with patch('escrow.services.get_payment_gateway') as mock_gateway:
@@ -935,7 +914,6 @@ class LifecycleTest(TestCase):
         self.assertEqual(self.vault.paypal_email, 'seller@example.com')
         self.assertEqual(self.vault.bank_name, 'PayPal')
 
-        # A second attempt redirects without creating a second vault.
         response = self.client.post(reverse('seller_add_vault', kwargs={'code': 'LIFE1'}), {
             'destination': 'other',
             'paypal_email': 'seller@example.com',
@@ -974,7 +952,7 @@ class AutoReleaseTest(TestCase):
     def test_releases_only_expired_inspections(self):
         expired = self.make('AR1', 'in_inspection', -datetime.timedelta(days=1))
         pending = self.make('AR2', 'in_inspection', datetime.timedelta(days=1))
-        # in_transit with a past deadline must never be picked up.
+        # in_transit with a past deadline must never be picked up (fixture guards the query).
         transit = self.make('AR3', 'in_transit', -datetime.timedelta(days=5))
 
         with patch('escrow.services.get_payment_gateway') as mock_gateway:
@@ -1105,7 +1083,6 @@ class SmokeTest(TestCase):
                 self.assertEqual(self.client.get(path).status_code, 200)
 
     def test_vault_form_renders_when_no_vault_exists(self):
-        # Seller-only page: verify this device as the seller for SMOKE2.
         make_contract(code='SMOKE2', status='awaiting_dispatch')
         verify(self.client, SELLER, code='SMOKE2')
         response = self.client.get(reverse('seller_add_vault', kwargs={'code': 'SMOKE2'}))
@@ -1135,8 +1112,7 @@ class SmokeTest(TestCase):
             if getattr(p, 'app_name', None) == 'admin':
                 continue
             if hasattr(p, 'url_patterns'):
-                # An included route set (e.g. the assistant): qualify names
-                # with the namespace the same way reverse() expects.
+                # Qualify included routes with the namespace, as reverse() expects.
                 namespace = getattr(p, 'namespace', None)
                 for sub in p.url_patterns:
                     name = f"{namespace}:{sub.name}" if namespace else sub.name

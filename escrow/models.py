@@ -29,10 +29,7 @@ class EscrowContract(models.Model):
         ('seller', 'Seller'),
     ]
 
-    # The single source of truth for the escrow lifecycle. Every status change
-    # must appear here or transition_to() will refuse it. `cancelled` after
-    # funding requires an ops refund check (see admin warning); `disputed`
-    # is reachable from either counterparty once value is at risk.
+    # Every status change must be listed here. Funded cancel needs an ops refund check.
     TRANSITIONS = {
         'pending_verification': {'awaiting_counterparty', 'cancelled'},
         'awaiting_counterparty': {'awaiting_funding', 'cancelled'},
@@ -233,9 +230,7 @@ class SettlementVault(models.Model):
 
 
 class EscrowDraft(models.Model):
-    """An incomplete or proposed transaction being assembled, usually with
-    the agent's help. Nothing here is a live escrow: creation happens only
-    through the validated creation path after explicit user confirmation."""
+    """Proposed transaction, not a live escrow; creation only after explicit confirmation."""
 
     STATUS_CHOICES = [
         ('draft', 'Draft'),
@@ -245,9 +240,7 @@ class EscrowDraft(models.Model):
     ]
 
     owner_email = models.EmailField(db_index=True, blank=True, default='')
-    # Browser/session that started this draft. Drafts are assemblable before
-    # email verification; the claim on owner_email is only proven when the
-    # creation OTP is consumed, at which point the session is bound to it.
+    # Owner email unproven until the creation OTP is consumed and binds this session.
     owner_session = models.CharField(max_length=64, db_index=True, blank=True, default='')
     title = models.CharField(max_length=255, blank=True)
     description = models.TextField(blank=True)
@@ -274,8 +267,7 @@ class EscrowDraft(models.Model):
 
 
 class Identity(models.Model):
-    """A verified user identity. No passwords, proof comes from OTP
-    challenges recorded against a VerifiedContact."""
+    """Verified user identity; proof via OTP challenges."""
 
     email = models.EmailField(unique=True, db_index=True)
     first_verified_at = models.DateTimeField(null=True, blank=True)

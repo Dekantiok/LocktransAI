@@ -40,9 +40,7 @@ def audit(action, actor='system', escrow=None, metadata=None):
 
 
 def calculate_service_fee(amount):
-    """
-    Flat-tier service fee in USD.
-    """
+    """Flat-tier service fee in USD."""
     from decimal import Decimal
 
     amount = Decimal(amount)
@@ -60,7 +58,6 @@ def calculate_service_fee(amount):
 
 
 def chargeable_total(contract):
-    """Single source of truth for the checkout total; delegates to the model."""
     return contract.total_charge
 
 
@@ -78,10 +75,7 @@ def get_unique_contract_code(attempts=5):
 
 
 def create_escrow_from_validated(cleaned_data):
-    """Create an escrow from validated creation data.
-
-    Single shared path for manual form and agent.
-    """
+    """Create an escrow from validated data (shared manual/agent path)."""
     contract = EscrowContract(
         title=cleaned_data['title'],
         description=cleaned_data['description'],
@@ -159,12 +153,7 @@ class OtpResult:
 
 
 def consume_otp(email, submitted_code, intent):
-    """
-    Validate a submitted code; attempts burn even on mismatch.
-
-    The decrement and the final consume are conditional UPDATEs so
-    concurrent guesses cannot overspend the 5-attempt budget.
-    """
+    """Validate a code; attempts burn on mismatch via conditional UPDATEs (concurrent guesses can't overspend)."""
     email = normalize_email(email)
     submitted_code = (submitted_code or '').strip()
     if not submitted_code:
@@ -200,8 +189,7 @@ def consume_otp(email, submitted_code, intent):
             return OtpResult(OtpResult.EXHAUSTED, record)
         return OtpResult(OtpResult.INVALID, record)
 
-    # Only burn an attempt after a correct code: expired or replaced
-    # codes reject without consuming tries.
+    # Correct code only: expired or replaced codes reject without burning tries.
     if record.is_expired:
         return OtpResult(OtpResult.EXPIRED, record)
 
@@ -251,12 +239,7 @@ def _transfer_succeeded(result):
 
 
 def confirm_funding_payment(contract, amount_kobo, currency=None):
-    """Mark a funded contract as awaiting_dispatch.
-
-    Shared by the webhook and the callback fallback. The move is a single
-    conditional UPDATE, so concurrent confirmations can only advance the
-    contract once. Returns True when this call moved it.
-    """
+    """Mark a funded contract awaiting_dispatch. Shared by webhook and callback; conditional UPDATE advances once."""
     if (
         EscrowContract.objects.filter(pk=contract.pk, status='awaiting_funding').count()
         == 0
@@ -311,9 +294,7 @@ def confirm_funding_payment(contract, amount_kobo, currency=None):
 
 
 def settle_pending_payout(contract):
-    """
-    Transfer funds for a contract in pending_payout (conditional, idempotent).
-    """
+    """Transfer for pending_payout (conditional, idempotent)."""
     vault = SettlementVault.objects.filter(contract=contract).first()
     if not vault:
         return PayoutResult(success=False, reason='missing_vault')
@@ -325,9 +306,7 @@ def settle_pending_payout(contract):
     if amount <= 0:
         return PayoutResult(success=False, reason='invalid_amount')
 
-    # Claim before any external call: an initiated/success/uncertain
-    # payout row means a transfer is already in flight or needs human
-    # reconciliation, so a concurrent settle must never send another.
+    # Claim before any external call: an initiated/success/uncertain row means a transfer is in flight or needs review.
     blocking = PayoutRecord.objects.filter(
         escrow=contract, status__in=('initiated', 'success', 'uncertain'),
     ).order_by('-id').first()
@@ -397,12 +376,8 @@ def settle_pending_payout(contract):
 
 
 def release_escrow_funds(contract):
-    """
-    Move an inspected escrow to payout (conditional claim, single transfer).
-    """
-    # Read the vault through the manager rather than the cached related object,
-    # so a stale in-memory instance can never claim a payout for a vault that
-    # no longer exists.
+    """Move in_inspection to payout via conditional claim; single transfer."""
+    # Read via the manager, so a stale in-memory copy can't claim for a deleted vault.
     if not SettlementVault.objects.filter(contract=contract).exists():
         return PayoutResult(success=False, reason='missing_vault')
 
@@ -417,13 +392,7 @@ def release_escrow_funds(contract):
 
 
 def initiate_refund(contract):
-    """Start a provider refund for a funded escrow (explicit record).
-
-    A cancelled escrow is not refunded until the provider confirms, so
-    the record starts as requested and moves to initiated/failed from
-    the gateway response. Safe to call once per cancellation: an
-    existing active refund is returned instead of duplicated.
-    """
+    """Start a provider refund for a funded escrow; idempotent per cancellation, pending until the provider confirms."""
     from .models import RefundRecord
     existing = RefundRecord.objects.filter(
         escrow=contract, status__in=('requested', 'initiated', 'success'),
@@ -463,9 +432,7 @@ def initiate_refund(contract):
 
 
 def auto_release_expired_inspections(dry_run=False):
-    """
-    Release escrows whose inspection window elapsed without buyer action.
-    """
+    """Release escrows whose inspection window elapsed without buyer action."""
     expired = EscrowContract.objects.filter(
         status='in_inspection', inspection_ends__lt=now()
     )
@@ -498,13 +465,7 @@ def transition_or_log(contract, target, **fields):
 
 
 def complete_counterparty_join(code, actor_email):
-    """Join an escrow as its counterparty after email proof.
-
-    Returns (contract, error). On success the escrow moves to
-    awaiting_funding, the joiner's verified flag is set, the creator is
-    notified, and the move is audited. Used by the manual join form's
-    chat equivalents: agent tool, webchat OTP resume, WhatsApp OTP resume.
-    """
+    """Join as counterparty after email proof; moves to awaiting_funding, sets the join flag, notifies and audits."""
     actor = normalize_email(actor_email)
     contract = EscrowContract.objects.filter(code=(code or '').strip()).first()
     if contract is None:
@@ -574,14 +535,7 @@ def escrow_next_step(contract, actor_email):
 
 
 def resume_escrow_after_verification(code, actor_email):
-    """Resume an escrow for EITHER party after email proof.
-
-    Returns (contract, kind, error) where kind is 'joined' (the
-    counterparty just joined), 'resumed' (a party continuing their own
-    escrow), or '' with an error for non-parties / unknown codes.
-    Continuing is not joining: creators and already-joined parties must
-    never be told they 'are not the counterparty'.
-    """
+    """Resume for either party after email proof; kind is 'joined', 'resumed', or '' with an error."""
     actor = normalize_email(actor_email)
     contract = EscrowContract.objects.filter(code=(code or '').strip()).first()
     if contract is None:

@@ -1,13 +1,4 @@
-"""PayPal gateway: Orders v2 + Payouts, sandbox/live via env.
-
-Env:
-  PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET,
-  PAYPAL_MODE=sandbox|live (default sandbox),
-  PAYPAL_BASE_URL override (default derived from mode),
-  PAYPAL_WEBHOOK_ID (for verify-webhook-signature),
-  PAYPAL_MERCHANT_EMAIL (optional, payee for orders),
-  GATEWAY_HTTP_TIMEOUT (seconds).
-"""
+"""PayPal gateway: Orders v2 + Payouts, sandbox/live via env."""
 import base64
 import logging
 
@@ -132,10 +123,7 @@ class PayPalGateway(PaymentGatewayBase):
             return {"status": False, "error": str(e)}
 
     def verify_transaction(self, gateway_reference):
-        """Fetch order; normalize to {status, data:{status, reference, amount, currency}}.
-
-        Works for order IDs (post-init) and falls back to a capture ID.
-        """
+        """Fetch order; normalize to {status, data}. Falls back to a capture id."""
         try:
             resp = requests.get(
                 f"{_base_url()}/v2/checkout/orders/{gateway_reference}",

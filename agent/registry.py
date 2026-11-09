@@ -1,8 +1,5 @@
 """The agent's only door into the platform: 18 approved tools.
-
-Every handler receives the verified actor from the server-side session -
-never from model arguments. Anything the model sends is treated as
-untrusted input, re-validated against the same state machine as the manual forms.
+The actor comes from the server-side session, never model arguments; model input is untrusted.
 """
 import logging
 from decimal import Decimal, InvalidOperation
@@ -65,9 +62,7 @@ def _get_participant_contract(escrow_reference, actor_email):
 
 
 def _get_owned_draft(draft_id, actor_email, session_key=''):
-    """A draft belongs to the session that started it, or to the verified
-    email it claims once proven. Either credential opens it; neither leaks
-    the other, a miss is just 'not authorized'."""
+    """A draft belongs to its session or verified email; misses are 'not authorized'."""
     try:
         draft = EscrowDraft.objects.get(id=draft_id)
     except (EscrowDraft.DoesNotExist, ValueError, TypeError):
@@ -167,11 +162,7 @@ def tool_validate_escrow_draft(actor, **kwargs):
 
 
 def tool_list_my_escrows(actor, **kwargs):
-    """Escrows the verified user participates in, newest first.
-
-    Answers "what's new / show my deals" without the user digging up a
-    code first. Active deals come first; pass include_closed for history.
-    """
+    """Escrows the verified user participates in, newest first."""
     actor = _require_actor(actor)
     include_closed = bool(kwargs.get('include_closed', False))
     rows = contracts_for_email(actor, include_closed=include_closed)[:10]
@@ -304,12 +295,8 @@ def tool_request_escrow_creation(actor, **kwargs):
                 for field, errors in form.errors.items()
             )
         )
-    # Every creation, verified chatter or not, parks on a fresh code for
-    # THIS escrow. The code is pasted in chat, the backend verifies it,
-    # and this exact call resumes: nothing is created before proof, and
-    # the resume step advances the escrow so the counterparty can join.
-    # Re-confirming while a code is live must not burn the cooldown into an
-    # error: the user is still on the same step, so remind them to paste it.
+    # Every creation parks on a fresh code; nothing is created before proof.
+    # Re-confirming while a code is live reminds them to paste it.
     from escrow.models import AuthOTP
     from django.utils import timezone as _tz
     if issue_otp(creator, 'create') is None:
@@ -397,8 +384,7 @@ def tool_request_delivery_confirmation(actor, **kwargs):
         )
     fields = {'seller_confirmed': True} if stage == 'dispatch' else {'buyer_confirmed': True}
     if stage == 'receipt':
-        # Inspection starts at receipt, same as the manual form, without
-        # this deadline auto-release can never fire for chat deals.
+        # Inspection starts at receipt so auto-release can fire.
         import datetime
         from django.utils import timezone as _tz
         fields['inspection_ends'] = _tz.now() + datetime.timedelta(
@@ -409,8 +395,7 @@ def tool_request_delivery_confirmation(actor, **kwargs):
                  contract, actor=actor)
     bank_saved = SettlementVault.objects.filter(contract=contract).exists()
     if stage == 'receipt' and not bank_saved:
-        # The seller cannot be paid without payout details, ask now,
-        # at receipt, not later when the buyer tries to release.
+        # Ask for payout details at receipt, before release is attempted.
         notify_event('bank_details_needed', contract, actor=actor)
     return {'ok': True, 'data': {
         'reference': contract.code, 'status': contract.status,
@@ -448,11 +433,7 @@ def tool_request_release_approval(actor, **kwargs):
 
 
 def tool_request_verification_code(actor, **kwargs):
-    """Send the in-chat email verification code (join/track/act flows).
-
-    Non-consequential: sending a code proves nothing by itself. Proof
-    happens when the user pastes it back and the backend consumes it.
-    """
+    """Send the in-chat email code; proof happens when the code is pasted back."""
     del actor
     email = normalize_email(str(kwargs.get('email') or '').strip())
     if '@' not in email or '.' not in email or ' ' in email:
@@ -466,8 +447,7 @@ def tool_request_verification_code(actor, **kwargs):
             'next': 'This chat is already verified for that email, carry on.',
         }}
     if conversation is not None and escrow_reference:
-        # Remember what the code is *for*: when it comes back verified,
-        # the chat layer completes the join without another round-trip.
+        # Remember what the code is for so the join completes on verification.
         conversation.pending_context = {
             **(conversation.pending_context or {}),
             'join_escrow_reference': escrow_reference,
@@ -553,8 +533,7 @@ def tool_request_seller_bank_details(actor, **kwargs):
     paypal_email = normalize_email(str(kwargs.get('paypal_email') or kwargs.get('account_number') or ''))
     use_verified = str(kwargs.get('use_verified_email') or '').strip().lower() in ('true', '1', 'yes')
     if not paypal_email and use_verified:
-        # The seller's identity was proven by email OTP: paying the
-        # verified inbox needs no extra address and cannot be spoofed.
+        # OTP-verified inbox needs no extra address and cannot be spoofed.
         paypal_email = actor
     if not paypal_email or '@' not in paypal_email:
         raise ToolError("Ask the seller for their PayPal email address (e.g. seller@example.com), or confirm sending to their verified email.")
@@ -768,14 +747,12 @@ TOOLS = [
 
 def execute(name, arguments, actor_email=None, base_url='', session_key='',
             conversation=None):
-    """Run one approved tool. Unknown tools and auth failures are errors,
-    never exceptions, the loop relays them to the model."""
+    """Run one approved tool; unknown tools and auth failures are errors, never exceptions."""
     handler = HANDLERS.get(name)
     if handler is None:
         return {'ok': False, 'error': f"Unknown tool '{name}'."}
     try:
-        # Underscore keys are server plumbing, never model input: a model
-        # argument can never override the callback host or session binding.
+        # Underscore keys are server plumbing; model input can never override them.
         args = {k: v for k, v in dict(arguments or {}).items()
                 if not k.startswith('_')}
         result = handler(actor_email, _base_url=base_url,

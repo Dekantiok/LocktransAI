@@ -1,9 +1,5 @@
-"""WhatsApp conversation workflow over the shared agent loop.
-
-The sender number is an endpoint, never identity: every escrow tool
-call uses the backend-verified email as actor. Email OTP binds number
-to identity; a bare 6-digit reply while creation is parked resumes it.
-Plaintext codes are never stored or sent to the model.
+"""WhatsApp workflow over the shared agent loop.
+Sender number is never identity; plaintext codes are never stored or sent to the model.
 """
 import logging
 
@@ -135,8 +131,7 @@ def _try_resume_creation(conversation, link, wa_id, code, base_url=''):
     contract = create_escrow_from_validated(form.cleaned_data)
     draft.status = 'converted'
     draft.save(update_fields=['status'])
-    # The creator email was just proven by the consumed code, advance past
-    # pending_verification so the counterparty can join.
+    # Code proof advances past pending_verification so the counterparty can join.
     confirmed_fields = {}
     if email == contract.buyer_email:
         confirmed_fields['buyer_confirmed'] = True
@@ -195,7 +190,7 @@ def handle_text_message(wa_id, text, base_url=''):
     link = get_link(wa_id)
     sync_conversation_owner(conversation, link)
 
-    # 1. Bare 6-digit code: creation OTP first, then general verification.
+    # Bare 6-digit codes: creation OTP first, then general verification.
     if OTP_MESSAGE_RE.match(text):
         resumed = _try_resume_creation(conversation, link, wa_id, text.strip(),
                                          base_url=base_url)
@@ -228,10 +223,7 @@ def handle_text_message(wa_id, text, base_url=''):
         adapter.send_text_message(wa_id, NO_CODE_PENDING)
         return NO_CODE_PENDING
 
-    # 2. Escrow code shared mid-chat: treat it as "join this specific
-    # escrow" without waiting for the agent. Verified participants jump
-    # straight to status; everyone else is asked for their email, and the
-    # code is remembered so the join completes on verification.
+    # Escrow codes are join intent: verified users resume immediately, others verify first.
     match = ESCROW_CODE_RE.search(text)
     if match and not _looks_like_email(text):
         code = match.group(0)
@@ -268,7 +260,6 @@ def handle_text_message(wa_id, text, base_url=''):
                 wa_id, CODE_SENT_TEMPLATE.format(email=link_pending))
         return reply
 
-    # 3. Email address: issue a verification code.
     if _looks_like_email(text):
         email = normalize_email(text)
         if link.verified_email == email:
@@ -293,21 +284,14 @@ def handle_text_message(wa_id, text, base_url=''):
         adapter.send_text_message(wa_id, reply)
         return reply
 
-    # 3. Anything else goes to the shared bounded agent loop. Unverified
-    # senders can still ask questions and build drafts; tools that need a
-    # verified actor refuse with guidance, same as the website assistant.
+    # Anything else goes to the shared loop; unverified senders get guided refusals.
     reply = run_turn(conversation, text, base_url=base_url, session_key=_session_key(wa_id))
     adapter.send_text_message(wa_id, reply or '')
     return reply or ''
 
 
 def handle_voice_message(wa_id, audio_bytes, base_url=''):
-    """Voice note into the agent: transcribe, then process as a text turn.
-
-    The transcript is recorded as the user message so the conversation
-    keeps a readable history. Transcription failures degrade to a typed
-    follow-up, never to silence.
-    """
+    """Transcribe a voice note, then process as text; failures degrade to a typed follow-up."""
     if not audio_bytes:
         reply = ("I couldn't download that voice note. "
                  "Please try again or type your message.")

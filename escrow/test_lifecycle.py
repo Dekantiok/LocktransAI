@@ -1,9 +1,4 @@
-"""End-to-end lifecycle via AI: release tool, push notifications, updates.
-
-Covers the buyer getting funded and released without leaving chat, the
-seller hearing about moves on WhatsApp, and the agent surfacing backend
-updates on the next turn.
-"""
+"""End-to-end lifecycle: release tool, push notifications, backend updates."""
 from decimal import Decimal
 from unittest.mock import ANY, patch
 
@@ -151,7 +146,6 @@ class NotifyTest(TestCase):
         self.assertEqual(mock_send.call_args[0][0], '234S')
 
     def test_unlinked_email_skipped_silently(self):
-        # funding_confirmed notifies the seller (counterparty here).
         contract = make_contract()
         contract.counterparty_email = 'ghost@x.com'
         contract.save()

@@ -1,10 +1,5 @@
 """Bounded agent loop: the model proposes, the backend disposes.
-
-One turn: persist the user message, ask the model, execute any approved
-tool calls against the registry (never trusting model arguments), feed
-results back, and return the final reply. Consequential tools run only
-when the user has confirmed the exact pending proposal; everything else
-degrades to a safe message when the model is unreachable.
+Consequential tools run only on confirmed pending proposals; otherwise turns degrade to a safe message.
 """
 import json
 import logging
@@ -116,11 +111,7 @@ ESCROW_CODE_RE = re.compile(r'LKTR[A-Za-z0-9]{5}')
 
 
 def find_pending_join_code(conversation):
-    """Escrow the user meant to join, from stored context or recent chat.
-
-    Checked after email verification succeeds so the join completes in
-    the same message instead of another model round-trip.
-    """
+    """Escrow to join after verification, from stored context or recent chat."""
     context = conversation.pending_context or {}
     code = (context.get('join_escrow_reference') or '').strip()
     if code:
@@ -154,12 +145,7 @@ def get_or_create_conversation(channel, channel_identity):
 
 
 def _normalize_arguments(arguments):
-    """Coerce model-generated args to canonical form before comparing.
-
-    The model sometimes re-emits an id as a string ("2" vs 2) on its
-    confirmation retry. Without this, the retry never matches the
-    proposal and the user is asked to confirm forever.
-    """
+    """Coerce model args to canonical form so string/int id retries still match."""
     normalized = {}
     for key, value in (arguments or {}).items():
         if key == 'draft_id':
@@ -197,14 +183,7 @@ def _proposal_fresh(pending):
     return 0 <= age < CONFIRMATION_TTL_SECONDS
 
 def _confirmation_reminder(pending):
-    """Tell the model the exact awaiting proposal so it can echo it.
-
-    Tool calls are hidden from history (never replayed), so without this
-    the model cannot know which arguments it proposed, it rebuilds the
-    draft and the confirmation never matches. The reminder carries only
-    backend-stored proposal data (tool + args, no OTPs); execution still
-    requires the user's confirmation and full backend validation.
-    """
+    """Echo the exact awaiting proposal so the model can confirm it identically."""
     return (
         "Reminder: you already proposed "
         f"{pending.get('tool')} with arguments "
@@ -228,13 +207,7 @@ def propose_action(conversation, name, arguments):
 
 
 def creation_terms_text(arguments):
-    """Server-computed fee breakdown for a creation proposal.
-
-    The model must present exact terms before the user confirms, but
-    prose comes from the model — without backend numbers the fee is
-    easily omitted. Returns '' when the draft can't be resolved, so
-    callers always degrade to the plain confirmation prompt.
-    """
+    """Server-computed fee breakdown for a creation proposal ('' when unresolvable)."""
     try:
         from escrow.forms import ContractCreationForm
         from escrow.models import EscrowDraft
@@ -279,14 +252,7 @@ def clear_proposal(conversation):
 
 
 def restart_thread(conversation):
-    """Page load means a brand-new chat, no exceptions.
-
-    History, pending proposals, pending verification, flow context, and
-    the verified owner are all cleared, and this session's unfinished
-    drafts are abandoned. Nothing about an escrow is lost: its state
-    lives on the backend, and the user resumes only by asking to join
-    or continue with the LKTR code and re-verifying their email.
-    """
+    """Restart chat: clear history, proposals, and verification. Escrow state lives on the backend."""
     conversation.messages.all().delete()
     conversation.pending_action = {}
     conversation.pending_email = None
@@ -298,7 +264,6 @@ def restart_thread(conversation):
     return {}
 
 
-# Backwards-compatible alias; page loads now always restart.
 def reset_thread_unless_live(conversation):
     return restart_thread(conversation)
 
@@ -319,19 +284,7 @@ def _abandon_session_drafts(conversation):
 
 def _maybe_auto_propose_creation(conversation, actor, session_key,
                                    draft_touched_this_turn):
-    """Park a creation proposal when this turn built a complete draft.
-
-    The model sometimes presents terms in prose without calling the
-    creation tool; without a recorded proposal the user's "yes" then
-    hits the gate cold and they are asked to confirm twice. Recording
-    the proposal at end-of-turn (never mid-turn, so it cannot execute
-    in the same turn it was made) means one confirmation always lands.
-
-    Only fires when the model actually created or updated a draft this
-    turn. Parking any complete draft ever seen would clobber a live
-    proposal for another action (e.g. a dispatch confirmation), and the
-    next "yes" would then execute the wrong thing — a stray escrow.
-    """
+    """Park a complete draft touched this turn so one confirmation lands; never clobbers live proposals."""
     if (conversation.pending_action or {}).get('tool'):
         return
     if not draft_touched_this_turn:
@@ -365,11 +318,7 @@ _CHANGE_WORDS_RE = re.compile(
 
 
 def _is_affirmative(text):
-    """Clear confirmation of the pending proposal, in natural phrasing.
-
-    "Yes, release them." counts; "yes but change the amount" never does -
-    any change/negation word sends the turn back to the model instead.
-    """
+    """Clear confirmation of the pending proposal; any change/negation word voids it."""
     text = (text or '').strip()
     if not AFFIRMATIVE_RE.match(text):
         return False
@@ -425,14 +374,7 @@ def _direct_reply(name, outcome):
 
 
 def _try_direct_confirmation(conversation, user_text, actor, base_url, session_key):
-    """Execute a fresh pending proposal on a clear 'yes', no model call.
-
-    The model occasionally re-presents terms in prose instead of
-    re-calling the tool, which made users confirm twice. A bare
-    affirmative reply to a recorded proposal is unambiguous, so the
-    backend executes the exact stored arguments deterministically.
-    Returns the reply string, or None to fall through to the model.
-    """
+    """Execute a fresh pending proposal on a clear 'yes' without a model call; else None."""
     pending = conversation.pending_action or {}
     name = pending.get('tool')
     if name not in CONSEQUENTIAL_TOOLS:
@@ -487,12 +429,7 @@ SENSITIVE_TOOL_ARGS = {
 
 
 def _redact_tool_arguments(name, arguments):
-    """Persist tool arguments with secrets masked.
-
-    WhatsApp threads live indefinitely and bank details already flowed
-    through chat rows once. Masking here keeps history/audit safe while
-    leaving every live value usable in the same turn it was captured.
-    """
+    """Persist tool arguments with secrets masked; live values stay usable this turn."""
     arguments = dict(arguments or {})
     sensitive = set(SENSITIVE_ARG_KEYS) | SENSITIVE_TOOL_ARGS.get(name, set())
     for key in list(arguments.keys()):
@@ -502,11 +439,7 @@ def _redact_tool_arguments(name, arguments):
 
 
 def _history_messages(conversation, limit=20):
-    """Replayable history: plain user/assistant turns only.
-
-    Tool calls and results are internal reasoning, never replayed, so
-    nothing can be re-executed from history and no call ids need persisting.
-    """
+    """Replayable user/assistant turns only; tool calls are never replayed."""
     rows = conversation.messages.order_by('-id')[:limit]
     history = []
     for row in reversed(list(rows)):
@@ -543,8 +476,7 @@ def run_turn(conversation, user_text, base_url='', session_key=''):
                 {'role': 'system',
                  'content': _confirmation_reminder(pending)})
         else:
-            # Stale proposal: drop it so the model starts clean instead
-            # of echoing dead arguments into another gated round-trip.
+            # Drop stale proposals so the model starts clean.
             clear_proposal(conversation)
     max_iterations = getattr(settings, 'AGENT_MAX_ITERATIONS', 8)
     draft_touched_this_turn = False
@@ -552,8 +484,7 @@ def run_turn(conversation, user_text, base_url='', session_key=''):
     try:
         for _ in range(max_iterations):
             try:
-                # One affinity key per conversation keeps every turn of an
-                # agent loop on the same warm container (Modal KV-cache).
+                # One affinity key keeps every turn of the loop on the same warm container.
                 result = chat(
                     model_messages, tools=TOOLS,
                     affinity_key=str(
@@ -625,9 +556,7 @@ def run_turn(conversation, user_text, base_url='', session_key=''):
                         data.get('email') if data.get('verification_required') else None
                     )
                     if outcome.get('ok') and verification_email:
-                        # Creation is parked on email proof: remember what the
-                        # user is verifying for so the chat view can resume it
-                        # when the code arrives as the next chat message.
+                        # Parked on email proof: resume here when the code arrives as the next message.
                         conversation.pending_action = {
                             'tool': name,
                             'arguments': arguments,

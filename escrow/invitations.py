@@ -1,10 +1,4 @@
-"""Counterparty invitation emails.
-
-Sent once when an escrow first reaches awaiting_counterparty, from any
-interface. Carries the code plus a prefilled join link; the counterparty
-still proves their inbox by OTP, so the code alone grants nothing.
-Best-effort: mail failure never breaks verification; one send per escrow.
-"""
+"""Counterparty invitation email; sent once per escrow, best-effort (mail failure never blocks verification)."""
 import logging
 
 from django.core.mail import send_mail
@@ -20,10 +14,7 @@ def invitation_already_sent(contract):
 
 
 def send_counterparty_invitation(contract, base_url=''):
-    """Email the counterparty their invite. Returns True when accepted.
-
-    Accepts (not raises) on any failure. Skips quietly when already sent.
-    """
+    """Email the counterparty invite; best-effort, skips if already sent."""
     from escrow.services import audit
     if invitation_already_sent(contract):
         return False

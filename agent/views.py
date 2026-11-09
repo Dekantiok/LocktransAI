@@ -1,8 +1,5 @@
-"""Website AI assistant: chat UI over the shared agent loop.
-
-No upfront verification, anyone can start talking. Confirming a draft
-sends a code to the creator email; pasting it back resumes creation.
-Bare 6-digit messages go to OTP consumption, never to the model.
+"""Website AI assistant over the shared agent loop.
+Bare 6-digit messages are OTPs, never model input; confirming a draft emails a code that resumes creation here.
 """
 import logging
 
@@ -53,20 +50,14 @@ def _conversation(request):
         conversation.owner_email = verified
         conversation.save(update_fields=['owner_email'])
     elif conversation.owner_email and conversation.owner_email != verified:
-        # Verification lapsed or switched: follow the session, the
-        # server-side proof of who sits at this browser.
+        # Follow the session: server-side proof of who sits at this browser.
         conversation.owner_email = verified or None
         conversation.save(update_fields=['owner_email'])
     return conversation
 
 
 def _pending_terms(pending):
-    """Server-computed fee breakdown for a pending creation proposal.
-
-    Rendered in the pending-confirmation panel so the fee is visible in
-    the UI even if the model's prose omitted it. None when the draft
-    can't be resolved or validated.
-    """
+    """Server-computed fee breakdown for a pending creation proposal."""
     pending = pending or {}
     if pending.get('tool') != 'request_escrow_creation':
         return None
@@ -109,8 +100,7 @@ def _pending_terms(pending):
 
 def _thread_context(conversation, request):
     pending = conversation.pending_action or {}
-    # A stale proposal must never resurface as a prompt after refresh:
-    # hide it here and drop it so the next turn starts clean.
+    # Drop stale proposals so refresh starts clean.
     if pending.get('tool') and not _proposal_fresh(pending):
         clear_proposal(conversation)
         conversation.refresh_from_db()
@@ -127,12 +117,7 @@ def _thread_context(conversation, request):
 
 
 def _complete_pending_join(conversation, email):
-    """Finish a join that was waiting on this verification, if any.
-
-    Returns the assistant reply to show, or None for a plain verify.
-    The stored context is always consumed so a stale code can never
-    join a later, unrelated verification.
-    """
+    """Finish a join waiting on verification; always consumes stored context."""
     code = find_pending_join_code(conversation)
     if conversation.pending_context:
         conversation.pending_context = {}
@@ -165,8 +150,7 @@ def _is_discard_command(text):
 
 def chat_page(request):
     conversation = _conversation(request)
-    # Refresh always restarts: drop the session's verified identity too,
-    # so resuming means joining/continuing with a code + fresh proof.
+    # Refresh always restarts: drop the verified identity too.
     request.session.pop('chat_verified_email', None)
     request.session.pop('chat_pending_email', None)
     restart_thread(conversation)
@@ -247,12 +231,7 @@ def _pending_creation(pending):
 
 
 def _try_resume_creation_with_code(request, conversation, text):
-    """Consume a pasted creation OTP and finish the escrow in-chat.
-
-    Returns the rendered thread response when this message was a creation
-    code attempt, else None so the caller falls through to the model.
-    The plaintext code is never stored or forwarded to the model.
-    """
+    """Consume a pasted creation OTP; plaintext code is never stored or sent to the model."""
     pending = conversation.pending_action or {}
     email, draft_id = _pending_creation(pending)
     if not email:
@@ -317,9 +296,7 @@ def _try_resume_creation_with_code(request, conversation, text):
     contract = create_escrow_from_validated(form.cleaned_data)
     draft.status = 'converted'
     draft.save(update_fields=['status'])
-    # The creator email was just proven by the consumed code, same as the
-    # manual /verify/ page, so advance past pending_verification now.
-    # Without this the counterparty join form refuses the escrow.
+    # Code proof matches the manual /verify/ page: advance past pending_verification so the counterparty can join.
     confirmed_fields = {}
     if email == contract.buyer_email:
         confirmed_fields['buyer_confirmed'] = True
@@ -381,8 +358,7 @@ def chat_send(request):
 
     agent_pending = normalize_email(conversation.pending_email or '')
     if agent_pending and OTP_MESSAGE_RE.match(text):
-        # Code the agent itself requested via request_verification_code:
-        # consume it here so joining/tracking finishes inside the chat.
+        # Code the agent requested via request_verification_code: consume here so joining finishes in chat.
         result = consume_otp(agent_pending, text, 'reauth')
         conversation.messages.create(role='user', content='[one-time code withheld]')
         if result.ok:
@@ -416,8 +392,7 @@ def chat_send(request):
 
     pending_email = request.session.get('chat_pending_email', '')
     if pending_email and OTP_MESSAGE_RE.match(text):
-        # Legacy upfront chat verification: keep consuming it for old
-        # sessions, but the UI no longer starts this flow.
+        # Legacy upfront verification: keep consuming it for old sessions.
         result = consume_otp(pending_email, text, 'reauth')
         conversation.messages.create(role='user', content='[one-time code withheld]')
         if result.ok:
@@ -597,12 +572,7 @@ def chat_new(request):
 
 @require_GET
 def chat_poll(request):
-    """Live updates for an open chat page (polled every ~10s).
-
-    Returns 204 when nothing new arrived so the page stays untouched;
-    otherwise the re-rendered thread. Never restarts the conversation -
-    that only happens on a full page load.
-    """
+    """Live updates for an open chat page; 204 when nothing new. Never restarts (page load does)."""
     conversation = _conversation(request)
     context = _thread_context(conversation, request)
     try:

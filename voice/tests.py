@@ -1,4 +1,3 @@
-"""Tests for Muse Voice Transcribe wiring (network + ffmpeg mocked)."""
 import io
 import math
 import struct
@@ -148,7 +147,7 @@ class ChatVoiceViewTest(TestCase):
         with patch('agent.views.transcribe_audio',
                    return_value='laptop for Adaeze'):
             response = self.post_voice()
-        # chat_voice renders thread; field endpoint is separate:
+        # Field endpoint is separate from chat_voice.
         from django.core.files.uploadedfile import SimpleUploadedFile
         with patch('agent.views.transcribe_audio',
                    return_value='laptop for Adaeze'):

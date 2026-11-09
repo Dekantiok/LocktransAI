@@ -1,9 +1,4 @@
-"""Payout destination verification for PayPal email vaults.
-
-Payouts go to a PayPal email; no bank lookup is needed. This module keeps
-the historic helper names as thin email validators so older imports keep
-working, but all verification is local email checks.
-"""
+"""PayPal-email payout verification; historic helpers stay as thin local email checks."""
 import logging
 
 from escrow.utils import normalize_email

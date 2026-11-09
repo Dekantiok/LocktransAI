@@ -8,8 +8,7 @@ def generate_secure_code(length=9):
 
 
 def generate_escrow_code(suffix_length=5):
-    """Escrow codes look like LKTRA1b2C: a LKTR prefix the AI and users
-    can spot inside chat, plus random alphanumerics."""
+    """Escrow codes look like LKTRA1b2C: LKTR prefix plus random alphanumerics."""
     alphabet = string.ascii_letters + string.digits
     return 'LKTR' + ''.join(secrets.choice(alphabet) for _ in range(suffix_length))
 

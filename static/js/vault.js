@@ -1,6 +1,4 @@
 (function () {
-    // Toggle the alternate-email field on the vault form. No-ops on pages
-    // without the form so this file is safe to include site-wide.
     function sync() {
         var other = document.getElementById('dest-other');
         var wrap = document.getElementById('other-email-wrap');

@@ -1,8 +1,4 @@
-"""Full circle inside chat: verify, join, remember-nothing-unverified.
-
-Covers LKTR codes, the in-chat verification tool, code consumption,
-draft amnesia on reload, and on-demand escrow listing.
-"""
+"""Full circle in chat: verify, join, unverified drafts forgotten, on-demand listing."""
 from decimal import Decimal
 from unittest.mock import patch
 

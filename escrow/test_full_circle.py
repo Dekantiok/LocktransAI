@@ -344,8 +344,7 @@ class ResumeEitherPartyTest(TestCase):
         self.assertIn('paypal', step.lower())
 
     def test_bank_details_accept_numeric_json_args(self):
-        # account_number is accepted as an alias for paypal_email, so a
-        # model emitting the legacy key still saves, without a generic crash.
+        # account_number is a legacy alias for paypal_email.
         contract = make_contract(
             code='LKTRfc060', status='in_inspection',
             creator='buyer@x.com', creator_role='buyer',
