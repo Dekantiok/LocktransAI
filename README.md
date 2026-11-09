@@ -42,7 +42,7 @@ The AI handles the whole arc conversationally: draft → confirm → code → jo
 - PayPal (Orders + Payouts + refunds), Termii (email OTP), SMTP/email (counterparty invites)
 - Hold-to-speak voice notes on web and WhatsApp; cancelled or sub-second taps are discarded, never transcribed
 - Any OpenAI-compatible chat model (served on Modal in this deployment), Meta Muse Voice Transcribe (STT)
-- SQLite locally, Postgres (e.g. Neon) when `DJANGO_DEBUG=False`
+- SQLite locally, managed Postgres when `DJANGO_DEBUG=False`
 - Timezone: `Africa/Lagos`
 
 ## Quickstart
@@ -265,7 +265,7 @@ Copy `.env.example` → `.env`. Never commit `.env`.
 | `DJANGO_SECRET_KEY` | prod only | dev fallback | Must be set when `DJANGO_DEBUG=False` |
 | `DJANGO_DEBUG` |, | `False` | Set `True` locally. SQLite is used when `True` |
 | `DJANGO_ALLOWED_HOSTS` | prod only | `127.0.0.1,localhost` | Comma-separated |
-| `DATABASE_URL` | prod only |, | Postgres URL (Neon/Render). `ssl_require=True`. Required: without it the app has no production database configured |
+| `DATABASE_URL` | prod only |, | Postgres connection string (`ssl_require=True`). Required: without it the app has no production database configured |
 | `DEMO_MODE` | judges | `False` | `True` stubs Termii OTP delivery and PayPal payments. AI and escrow logic stay real |
 | `DEMO_OTP_CODE` | judges | `123456` | Universal verification code accepted only while `DEMO_MODE=True` |
 | `DEMO_ALLOW_PROD` | — | `False` | Explicit opt-in allowing Demo mode with `DJANGO_DEBUG=False` (isolated demo deployments only) |
@@ -378,7 +378,7 @@ Any OpenAI-compatible server works here — a Modal shared endpoint or your own 
 
 Hold the chat mic (web) or send a WhatsApp voice note → `voice/transcriber.py`: ffmpeg (pip-bundled binary, no apt) converts to 16-bit mono WAV → Muse Voice Transcribe (`PUSH_TO_TALK`, English bias, escrow vocabulary). The transcript feeds the normal agent turn, including bare 6-digit codes; cancelled or sub-400ms holds are discarded and never transcribed. Failures degrade to "type instead"; throttled (20/hr per session) and size-capped since transcription is metered.
 
-## Deployment (Render + Neon style)
+## Deployment (Render style)
 
 1. Set `DJANGO_DEBUG=False`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DATABASE_URL`, `CSRF_TRUSTED_ORIGINS`, PayPal/Termii/Model/WhatsApp keys, SMTP. The app refuses to boot without `PAYPAL_CLIENT_ID`, with default hosts, or with `DEMO_MODE` on. `EMAIL_HOST` is optional: without SMTP, invitation links print to the server log instead of emailing.
 2. Build: `pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate`

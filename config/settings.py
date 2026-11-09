@@ -116,7 +116,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# SQLite locally; Neon Postgres (via DATABASE_URL) when deployed with
+# SQLite locally; managed Postgres (via DATABASE_URL) when deployed with
 # DEBUG off, e.g. Render. Keeps the single-node override for good measure.
 if DEBUG:
     DATABASES = {

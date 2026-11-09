@@ -2,10 +2,8 @@
 # Render dashboard (New > Blueprint, point at this repo) or `render` CLI.
 # After first deploy, update DJANGO_ALLOWED_HOSTS and CSRF_TRUSTED_ORIGINS
 # with the real https://<service>.onrender.com hostname.
-# Database: Render-managed Postgres by default (see `databases` below).
-# Free-tier workaround: if your plan can't provision it, create the DB at
-# dashboard.neon.tech instead and override DATABASE_URL with the pooled
-# connection string (pooled host, sslmode=require).
+# DATABASE_URL below can point at the provisioned database or be replaced
+# with any external Postgres connection string.
 services:
   - type: web
     name: locktrans
@@ -28,8 +26,6 @@ services:
         fromDatabase:
           name: locktrans-db
           property: connectionString
-        # Free-tier alternative: delete the fromDatabase block above and
-        # paste a Neon pooled connection string as a plain value instead.
       - key: SECURE_SSL_REDIRECT
         value: True
       # PayPal sandbox (hackathon judging). Promote to live keys post-hackathon.
